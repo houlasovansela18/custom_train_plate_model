@@ -34,7 +34,7 @@ def preprocess_image(image_path,resize=False):
     return img
 
 
-def get_plate(image_path, Dmax=600, Dmin=230):
+def get_plate(image_path, Dmax=608, Dmin=230):
     vehicle = preprocess_image(image_path)
     ratio = float(max(vehicle.shape[:2])) / min(vehicle.shape[:2])
     side = int(ratio * Dmin)
@@ -43,7 +43,7 @@ def get_plate(image_path, Dmax=600, Dmin=230):
     return vehicle, LpImg, cor
 
 # Obtain plate image and its coordinates from an image
-test_image = "Plate_examples/khmer_10_car.png"
+test_image = "Plate_examples/khmer_05_car.png"
 vehicle, LpImg,cor = get_plate(test_image)
 print("Detect %i plate(s) in"%len(LpImg),splitext(basename(test_image))[0])
 print("Coordinate of plate(s) in image: \n", cor)
@@ -72,7 +72,7 @@ def sort_contours(cnts,reverse = False):
     boundingBoxes = [cv2.boundingRect(c) for c in cnts]
     (cnts, boundingBoxes) = zip(*sorted(zip(cnts, boundingBoxes),
                                         key=lambda b: b[1][i], reverse=reverse))
-    return cnts
+    return cnts,boundingBoxes
 
 cont, _  = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -83,20 +83,38 @@ test_roi = plate_image.copy()
 crop_characters = []
 
 # define standard width and height of character
-digit_w, digit_h = 20, 60
+digit_w, digit_h = 40, 80
+x_col, y_col = [],[]
+cont, boundingBox = sort_contours(cont)
+x_min, x_max, y_min, y_max = 0,0,0,0
 
-for c in sort_contours(cont):
+for c in cont:
     (x, y, w, h) = cv2.boundingRect(c)
+    # cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
+    if 0.35<=x/plate_image.shape[0]<=1 and y/plate_image.shape[0]<=0.33:
+        cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
+        x_col.append((x,w))
+        y_col.append((y,h))
     ratio = h/w
-    if 0.8<=ratio<=8: # Only select contour with defined ratio
-        if h/plate_image.shape[0]>=0.35: # Select contour which has the height larger than 35% of the plate
+    if 1<=ratio<=6 and w <= digit_w: # Only select contour with defined ratio
+        if h/plate_image.shape[0]>=0.3: # Select contour which has the height larger than 35% of the plate
             # Draw bounding box around digit number
             cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 1)
             # Seperrate number and gibe prediction
+            # print(w,h)
             curr_num = thre_mor[y:y+h,x:x+w]
             curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
             _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             crop_characters.append(curr_num)
+
+
+x_min = min(x_col)[0]
+y_min = min(y_col)[0]
+x_max = max([ i[0]+i[1]  for i in x_col])
+y_max = max([ i[0]+i[1]  for i in y_col])
+
+cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max), (0, 255,0), 1)
+print(x_min, x_max, y_min, y_max)
 
 print("Detect {} letters...".format(len(crop_characters)))
 fig = plt.figure(figsize=(10,6))
@@ -129,8 +147,8 @@ final_string = ''
 for i,character in enumerate(crop_characters):
     fig.add_subplot(grid[i])
     title = np.array2string(predict_from_model(character,model,labels))
-    # if title.strip("'[]") == "P":
-    #     cv2.imwrite("dataset_characters/R/R_1018.jpg",character)
+    # if title.strip("'[]") == "3":
+    #     cv2.imwrite("dataset_characters/2/2_1017.jpg",character)
     plt.title('{}'.format(title.strip("'[]"),fontsize=20))
     final_string+=title.strip("'[]")
     plt.axis(False)
