@@ -39,15 +39,15 @@ def get_plate(image_path, Dmax=608, Dmin=230):
     ratio = float(max(vehicle.shape[:2])) / min(vehicle.shape[:2])
     side = int(ratio * Dmin)
     bound_dim = min(side, Dmax)
-    _ , LpImg, _, cor = detect_lp(wpod_net, vehicle, bound_dim, lp_threshold=0.5)
-    return vehicle, LpImg, cor
+    _ , LpImg, lp_type, cor = detect_lp(wpod_net, vehicle, bound_dim, lp_threshold=0.5)
+    return vehicle, LpImg,lp_type, cor
 
 # Obtain plate image and its coordinates from an image
-test_image = "Plate_examples/khmer_moto_02.jpg"
-vehicle, LpImg,cor = get_plate(test_image)
+test_image = "Plate_examples/khmer_02_car.png"
+vehicle, LpImg,lp_type,cor = get_plate(test_image)
 print("Detect %i plate(s) in"%len(LpImg),splitext(basename(test_image))[0])
 print("Coordinate of plate(s) in image: \n", cor)
-
+print(lp_type)
 
 
 
@@ -66,6 +66,15 @@ if (len(LpImg)): #check if there is at least one license image
     kernel3 = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
     thre_mor = cv2.morphologyEx(binary, cv2.MORPH_DILATE, kernel3)
 
+
+def drawKhmer_cont():
+
+    x_min = min(x_col)[0]
+    y_min = min(y_col)[0]
+    x_max = max([ i[0]+i[1]  for i in x_col])
+    y_max = max([ i[0]+i[1]  for i in y_col])
+
+    cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max), (0, 255,0), 1)
 
 def sort_contours(cnts,reverse = False):
     i = 0
@@ -90,8 +99,15 @@ x_min, x_max, y_min, y_max = 0,0,0,0
 
 for c in cont:
     (x, y, w, h) = cv2.boundingRect(c)
-    if 0.25<=x/plate_image.shape[0] and y/plate_image.shape[0]<=0.34:
-        # cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
+    if lp_type == 2:
+        if 0.25<=x/plate_image.shape[0] and y/plate_image.shape[0]<=0.34:
+            # cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
+            x_col.append((x,w))
+            y_col.append((y,h))
+    if lp_type == 1:
+        cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
+        if 0.1<=x/plate_image.shape[0] <=1.8 and y/plate_image.shape[0]<=0.8: 
+            # cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
             x_col.append((x,w))
             y_col.append((y,h))
     ratio = h/w
@@ -100,20 +116,16 @@ for c in cont:
             # Draw bounding box around digit number
             cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 1)
             # Seperrate number and gibe prediction
-            # print(w,h)
             curr_num = thre_mor[y:y+h,x:x+w]
             curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
             _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
             crop_characters.append(curr_num)
 
 
-x_min = min(x_col)[0]
-y_min = min(y_col)[0]
-x_max = max([ i[0]+i[1]  for i in x_col])
-y_max = max([ i[0]+i[1]  for i in y_col])
+if lp_type == 2: drawKhmer_cont()
+if lp_type == 1: drawKhmer_cont()
 
-cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max), (0, 255,0), 1)
-print(x_min, x_max, y_min, y_max)
+
 
 print("Detect {} letters...".format(len(crop_characters)))
 fig = plt.figure(figsize=(10,6))
