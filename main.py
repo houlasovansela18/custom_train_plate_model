@@ -43,7 +43,7 @@ def get_plate(image_path, Dmax=608, Dmin=230):
     return vehicle, LpImg, cor
 
 # Obtain plate image and its coordinates from an image
-test_image = "Plate_examples/khmer_11_car.png"
+test_image = "Plate_examples/khmer_moto_02.jpg"
 vehicle, LpImg,cor = get_plate(test_image)
 print("Detect %i plate(s) in"%len(LpImg),splitext(basename(test_image))[0])
 print("Coordinate of plate(s) in image: \n", cor)
@@ -90,14 +90,13 @@ x_min, x_max, y_min, y_max = 0,0,0,0
 
 for c in cont:
     (x, y, w, h) = cv2.boundingRect(c)
-    # cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
-    if 0.35<=x/plate_image.shape[0]<=1 and y/plate_image.shape[0]<=0.34:
-        cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
-        x_col.append((x,w))
-        y_col.append((y,h))
+    if 0.25<=x/plate_image.shape[0] and y/plate_image.shape[0]<=0.34:
+        # cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
+            x_col.append((x,w))
+            y_col.append((y,h))
     ratio = h/w
     if 1<=ratio<=6 and w <= digit_w: # Only select contour with defined ratio
-        if h/plate_image.shape[0]>=0.3: # Select contour which has the height larger than 35% of the plate
+        if h/plate_image.shape[0]>=0.32 : # Select contour which has the height larger than 35% of the plate
             # Draw bounding box around digit number
             cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 1)
             # Seperrate number and gibe prediction
