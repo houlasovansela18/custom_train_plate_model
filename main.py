@@ -1,13 +1,16 @@
 import cv2
 import numpy as np
 import keras
+import pytesseract
+import glob
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+
+
 from local_utils import detect_lp
 from os.path import splitext,basename
 from keras.models import model_from_json
 from sklearn.preprocessing import LabelEncoder
-import glob
 
 
 def load_model(path):
@@ -46,8 +49,6 @@ def get_plate(image_path, Dmax=608, Dmin=230):
 test_image = "Plate_examples/khmer_02_car.png"
 vehicle, LpImg,lp_type,cor = get_plate(test_image)
 print("Detect %i plate(s) in"%len(LpImg),splitext(basename(test_image))[0])
-print("Coordinate of plate(s) in image: \n", cor)
-print(lp_type)
 
 
 
@@ -73,8 +74,12 @@ def drawKhmer_cont():
     y_min = min(y_col)[0]
     x_max = max([ i[0]+i[1]  for i in x_col])
     y_max = max([ i[0]+i[1]  for i in y_col])
-
-    cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max), (0, 255,0), 1)
+    khmer_org_crop = test_roi[y_min:y_max, x_min:x_max]
+    text = pytesseract.image_to_string(khmer_org_crop, lang='khm', config ='--oem 3 -l khm --psm 7 -c   tessedit_char_whitelist = កខគឃងចឆជឈញបផពភមយរលវសហឡអ០១២៣៤៥៦៧៨៩')
+    # cv2.imwrite("dataset_khmer_org/ភ្នំពេញ/ភ្នំពេញ_02.png", khmer_org_crop)
+    # print(x_max - x_min,y_max - y_min)
+    if x_max - x_min >= 80 and y_max - y_min >= 40:
+        cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max), (0, 255,0), 1)
 
 def sort_contours(cnts,reverse = False):
     i = 0
@@ -99,14 +104,14 @@ x_min, x_max, y_min, y_max = 0,0,0,0
 
 for c in cont:
     (x, y, w, h) = cv2.boundingRect(c)
+    # cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
     if lp_type == 2:
         if 0.25<=x/plate_image.shape[0] and y/plate_image.shape[0]<=0.34:
             # cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
             x_col.append((x,w))
             y_col.append((y,h))
     if lp_type == 1:
-        cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
-        if 0.1<=x/plate_image.shape[0] <=1.8 and y/plate_image.shape[0]<=0.8: 
+        if 0.2<=x/plate_image.shape[0] <=1.3 and 0 < y/plate_image.shape[0]<=0.6: 
             # cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
             x_col.append((x,w))
             y_col.append((y,h))
