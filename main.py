@@ -117,7 +117,6 @@ feat_ycol = np.hstack((np.array(feat_coor[1]), np.array(feat_coor[3])))
 test_roi[res[:,1],res[:,0]]=[0,0,255]
 test_roi[res[:,3],res[:,2]] = [0,255,0]
 
-# cv2.imwrite('subpixel5.png',test_roi)
 
 def drawKhmer_cont():
 
@@ -136,7 +135,6 @@ def drawKhmer_cont():
         test_roi[dis_res[:,1],dis_res[:,0]]=[0,0,255]
         test_roi[dis_res[:,3],dis_res[:,2]] = [0,255,0]
 
-        # cv2.imwrite('subpixel5.png',test_roi)
 
 # Initialize a list which will be used to append charater image
 crop_characters = []
