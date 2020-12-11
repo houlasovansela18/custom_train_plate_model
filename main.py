@@ -36,7 +36,7 @@ def preprocess_image(image_path,resize=False):
     return img
 
 
-def get_plate(image_path, Dmax=608, Dmin=230):
+def get_plate(image_path, Dmax=608, Dmin=440):
     vehicle = preprocess_image(image_path)
     ratio = float(max(vehicle.shape[:2])) / min(vehicle.shape[:2])
     side = int(ratio * Dmin)
@@ -45,7 +45,7 @@ def get_plate(image_path, Dmax=608, Dmin=230):
     return vehicle, LpImg,lp_type, cor
 
 # Obtain plate image and its coordinates from an image
-test_image = "Plate_examples/khmer_17_car.png"
+test_image = "Plate_examples/khmer_05_car.png"
 vehicle, LpImg,lp_type,cor = get_plate(test_image)
 print("Detect %i plate(s) in"%len(LpImg),splitext(basename(test_image))[0])
 
@@ -102,7 +102,7 @@ res = np.int0(res)
 dis_res = []
 
 for r in res:
-    if 0.01<=r[0]/plate_image.shape[1] <=0.32 and 0.01<= r[1]/plate_image.shape[0]<=0.6: 
+    if 0.03<=r[0]/plate_image.shape[1] <=0.37 and 0.15<= r[1]/plate_image.shape[0]<=0.5: 
         dis_res.append(r)        
 
 dis_res = np.array(dis_res)
@@ -117,6 +117,16 @@ feat_ycol = np.hstack((np.array(feat_coor[1]), np.array(feat_coor[3])))
 test_roi[res[:,1],res[:,0]]=[0,0,255]
 test_roi[res[:,3],res[:,2]] = [0,255,0]
 
+def draw(x_min, x_max, y_min, y_max,constant):
+
+    # print((x_max-x_min)/plate_image.shape[1])
+    if 0.15<=(x_max-x_min)/plate_image.shape[1]<=constant:
+            cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max), (0, 255,0), 1)
+    else:
+        cv2.rectangle(test_roi, (min(feat_xcol), min(feat_ycol)), (max(feat_xcol), max(feat_ycol)), (0, 255,0), 1)
+        test_roi[dis_res[:,1],dis_res[:,0]]=[0,0,255]
+        test_roi[dis_res[:,3],dis_res[:,2]] = [0,255,0]
+
 
 def drawKhmer_cont():
 
@@ -129,7 +139,9 @@ def drawKhmer_cont():
         # text = pytesseract.image_to_string(khmer_org_crop, lang='khm', config ='--oem 3 -l khm --psm 7 -c   tessedit_char_whitelist = កខគឃងចឆជឈញបផពភមយរលវសហឡអ០១២៣៤៥៦៧៨៩')
         # cv2.imwrite("dataset_khmer_org/ភ្នំពេញ/ភ្នំពេញ_02.png", khmer_org_crop)
         # print(x_max ,x_min,y_max ,y_min)
-        cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max), (0, 255,0), 1)
+        if lp_type == 1: draw(x_min, x_max, y_min, y_max,0.45)
+        if lp_type == 2: draw(x_min, x_max, y_min, y_max,0.8)
+        
     except: 
         cv2.rectangle(test_roi, (min(feat_xcol), min(feat_ycol)), (max(feat_xcol), max(feat_ycol)), (0, 255,0), 1)
         test_roi[dis_res[:,1],dis_res[:,0]]=[0,0,255]
@@ -140,7 +152,7 @@ def drawKhmer_cont():
 crop_characters = []
 
 # define standard width and height of character
-digit_w, digit_h = 40, 80
+digit_w, digit_h = 30, 60
 x_col, y_col = [],[]
 cont, boundingBox = sort_contours(cont)
 x_min, x_max, y_min, y_max = 0,0,0,0
@@ -149,32 +161,32 @@ for c in cont:
     (x, y, w, h) = cv2.boundingRect(c)
     cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
     if lp_type == 2:
-        if 0.25<=x/plate_image.shape[1]<=0.7 and 0.05<=y/plate_image.shape[0]<=0.34:
+        if 0.2<=x/plate_image.shape[1]<=0.8 and 0.01<=y/plate_image.shape[0]<=0.3:
             cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,255), 1)
             x_col.append((x,w))
             y_col.append((y,h))
         ratio = h/w
-        if 1<=ratio<=6 and w <= digit_w: # Only select contour with defined ratio
+        if 1<=ratio<=6 and w <= 40: # Only select contour with defined ratio
             if h/plate_image.shape[0]>=0.32 : # Select contour which has the height larger than 35% of the plate
                 # Draw bounding box around digit number
                 cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 1)
                 # Seperrate number and gibe prediction
-                curr_num = thre_mor[y:y+h,x:x+w+1]
+                curr_num = thre_mor[y:y+h,x:x+w]
                 curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
                 _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                 crop_characters.append(curr_num)
     if lp_type == 1:
-        if 0.01<=x/plate_image.shape[1] <=0.32 and 0.01<= y/plate_image.shape[0]<=0.6: 
+        if 0.01<=x/plate_image.shape[1] <=0.32 and 0.1<= y/plate_image.shape[0]<=0.6: 
             cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,255), 1)
             x_col.append((x,w))
             y_col.append((y,h))
         ratio = h/w
-        if 1<=ratio<=6 and w <= digit_w: # Only select contour with defined ratio
+        if 1<=ratio<=6 and w <= 40: # Only select contour with defined ratio
             if h/plate_image.shape[0]>=0.32 and x/plate_image.shape[1]>=0.32: # Select contour which has the height larger than 35% of the plate
                 # Draw bounding box around digit number
                 cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 1)
                 # Seperrate number and gibe prediction
-                curr_num = thre_mor[y:y+h,x:x+w+1]
+                curr_num = thre_mor[y:y+h,x:x+w]
                 curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
                 _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                 crop_characters.append(curr_num)
