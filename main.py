@@ -75,7 +75,7 @@ def drawKhmer_cont():
 
 
 # Obtain plate image and its coordinates from an image
-test_image = "Plate_examples/khmer_03_car.png"
+test_image = "Plate_examples/khmer_29_car.png"
 vehicle, LpImg,lp_type,cor = get_plate(test_image)
 print("Detect %i plate(s) in"%len(LpImg),splitext(basename(test_image))[0])
 print(lp_type,"LP typed")
@@ -128,13 +128,13 @@ for c in cont:
                 _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                 crop_characters.append(curr_num)
     if lp_type == 1:
-        if 0.01<=x/plate_image.shape[1] <=0.32 and 0.1<= y/plate_image.shape[0]<=0.7: 
+        if 0.01<=x/plate_image.shape[1] <=0.28 and 0.1<= y/plate_image.shape[0]<=0.7: 
             cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,255), 1)
             x_col.append((x,w))
             y_col.append((y,h))
         ratio = h/w
         if 1<=ratio<=6: # Only select contour with defined ratio
-            if h/plate_image.shape[0]>=0.32 and x/plate_image.shape[1]>=0.32: # Select contour which has the height larger than 35% of the plate
+            if h/plate_image.shape[0]>=0.32 and x/plate_image.shape[1]>=0.28: # Select contour which has the height larger than 35% of the plate
                 # Draw bounding box around digit number
                 cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 1)
                 # Seperrate number and gibe prediction
