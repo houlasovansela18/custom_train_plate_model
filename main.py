@@ -29,6 +29,7 @@ wpod_net = load_model(wpod_net_path)
 
 def preprocess_image(image_path,resize=False):
     img = cv2.imread(image_path)
+    # img = cv2.convertScaleAbs(img, alpha=0.5, beta=100)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = img / 255
     if resize:
@@ -66,22 +67,19 @@ def drawKhmer_cont():
         x_max = max([ i[0]+i[1]  for i in x_col])
         y_max = max([ i[0]+i[1]  for i in y_col])
         khmer_org_crop = test_roi[y_min:y_max, x_min:x_max]
-        # text = pytesseract.image_to_string(khmer_org_crop, lang='khm', config ='--oem 3 -l khm --psm 7 -c   tessedit_char_whitelist = កខគឃងចឆជឈញបផពភមយរលវសហឡអ០១២៣៤៥៦៧៨៩')
-        # cv2.imwrite("dataset_khmer_org/ភ្នំពេញ/ភ្នំពេញ_02.png", khmer_org_crop)
-        print(x_max ,x_min,y_max ,y_min)
         cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max), (0, 255,0), 1)
         
     except: pass
 
-
 # Obtain plate image and its coordinates from an image
-test_image = "Plate_examples/khmer_29_car.png"
+test_image = "Plate_examples/khmer_30_car.png"
 vehicle, LpImg,lp_type,cor = get_plate(test_image)
 print("Detect %i plate(s) in"%len(LpImg),splitext(basename(test_image))[0])
 print(lp_type,"LP typed")
 
 if len(LpImg): #check if there is at least one license image
     # Scales, calculates absolute values, and converts the result to 8-bit.
+    plt.imshow(LpImg[0])
     plate_image = cv2.convertScaleAbs(LpImg[0], alpha=(255.0))
     if lp_type == 1: plate_image = plate_image[15:plate_image.shape[0] - 17, 10:plate_image.shape[1]-10]
     else:plate_image = plate_image[10:plate_image.shape[0] - 30, 0:plate_image.shape[1]-10]
@@ -128,7 +126,7 @@ for c in cont:
                 _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                 crop_characters.append(curr_num)
     if lp_type == 1:
-        if 0.01<=x/plate_image.shape[1] <=0.28 and 0.1<= y/plate_image.shape[0]<=0.7: 
+        if 0<=x/plate_image.shape[1] <=0.28 and 0.1<= y/plate_image.shape[0]<=0.7: 
             cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,255), 1)
             x_col.append((x,w))
             y_col.append((y,h))
@@ -171,8 +169,8 @@ final_string = ''
 for i,character in enumerate(crop_characters):
     fig.add_subplot(grid[i])
     title = np.array2string(predict_from_model(character,model,labels))
-    # if title.strip("'[]") == "3":
-    #     cv2.imwrite("dataset_characters/2/2_1017.jpg",character)
+    if title.strip("'[]") == "P":
+        cv2.imwrite("dataset_characters/R/R_1017.jpg",character)
     plt.title('{}'.format(title.strip("'[]"),fontsize=20))
     final_string+=title.strip("'[]")
     plt.axis(False)
