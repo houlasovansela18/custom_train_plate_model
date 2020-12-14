@@ -58,8 +58,24 @@ def predict_from_model(image,model,labels):
     prediction = labels.inverse_transform([np.argmax(model.predict(image[np.newaxis,:]))])
     return prediction
 
+def drawKhmer_cont():
+
+    try :
+        x_min = min(x_col)[0]
+        y_min = min(y_col)[0]
+        x_max = max([ i[0]+i[1]  for i in x_col])
+        y_max = max([ i[0]+i[1]  for i in y_col])
+        khmer_org_crop = test_roi[y_min:y_max, x_min:x_max]
+        # text = pytesseract.image_to_string(khmer_org_crop, lang='khm', config ='--oem 3 -l khm --psm 7 -c   tessedit_char_whitelist = កខគឃងចឆជឈញបផពភមយរលវសហឡអ០១២៣៤៥៦៧៨៩')
+        # cv2.imwrite("dataset_khmer_org/ភ្នំពេញ/ភ្នំពេញ_02.png", khmer_org_crop)
+        print(x_max ,x_min,y_max ,y_min)
+        cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max), (0, 255,0), 1)
+        
+    except: pass
+
+
 # Obtain plate image and its coordinates from an image
-test_image = "Plate_examples/khmer_16_car.png"
+test_image = "Plate_examples/khmer_03_car.png"
 vehicle, LpImg,lp_type,cor = get_plate(test_image)
 print("Detect %i plate(s) in"%len(LpImg),splitext(basename(test_image))[0])
 print(lp_type,"LP typed")
@@ -67,8 +83,8 @@ print(lp_type,"LP typed")
 if len(LpImg): #check if there is at least one license image
     # Scales, calculates absolute values, and converts the result to 8-bit.
     plate_image = cv2.convertScaleAbs(LpImg[0], alpha=(255.0))
-    if lp_type == 1: 
-        plate_image = plate_image[15:plate_image.shape[0] - 17, 10:plate_image.shape[1]-10]
+    if lp_type == 1: plate_image = plate_image[15:plate_image.shape[0] - 17, 10:plate_image.shape[1]-10]
+    else:plate_image = plate_image[10:plate_image.shape[0] - 30, 0:plate_image.shape[1]-10]
     # convert to grayscale and blur the image
     gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray,(7,7),0)
@@ -84,33 +100,6 @@ cont, _  = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 # create a copy version "test_roi" of plat_image to draw bounding box
 test_roi = plate_image.copy()
 
-
-def draw(x_min, x_max, y_min, y_max,constant):
-
-    # print((x_max-x_min)/plate_image.shape[1])
-    if 0.13<=(x_max-x_min)/plate_image.shape[1]<=constant and x_max-x_min>=90:
-            cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max), (0, 255,0), 1)
-    else:
-        cv2.rectangle(test_roi, (min(feat_xcol), min(feat_ycol)), (max(feat_xcol), max(feat_ycol)), (0, 255,0), 1)
-
-
-def drawKhmer_cont():
-
-    try :
-        x_min = min(x_col)[0]
-        y_min = min(y_col)[0]
-        x_max = max([ i[0]+i[1]  for i in x_col])
-        y_max = max([ i[0]+i[1]  for i in y_col])
-        khmer_org_crop = test_roi[y_min:y_max, x_min:x_max]
-        # text = pytesseract.image_to_string(khmer_org_crop, lang='khm', config ='--oem 3 -l khm --psm 7 -c   tessedit_char_whitelist = កខគឃងចឆជឈញបផពភមយរលវសហឡអ០១២៣៤៥៦៧៨៩')
-        # cv2.imwrite("dataset_khmer_org/ភ្នំពេញ/ភ្នំពេញ_02.png", khmer_org_crop)
-        # print(x_max ,x_min,y_max ,y_min)
-        if lp_type == 1: draw(x_min, x_max, y_min, y_max,0.45)
-        if lp_type == 2: draw(x_min, x_max, y_min, y_max,0.8)
-        
-    except: pass
-
-
 # Initialize a list which will be used to append charater image
 crop_characters = []
 
@@ -124,7 +113,7 @@ for c in cont:
     (x, y, w, h) = cv2.boundingRect(c)
     cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
     if lp_type == 2:
-        if 0.2<=x/plate_image.shape[1]<=0.8 and 0.01<=y/plate_image.shape[0]<=0.3:
+        if 0.22<=x/plate_image.shape[1]<=0.73 and 0<=y/plate_image.shape[0]<=0.32:
             cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,255), 1)
             x_col.append((x,w))
             y_col.append((y,h))
@@ -139,7 +128,7 @@ for c in cont:
                 _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                 crop_characters.append(curr_num)
     if lp_type == 1:
-        if 0.01<=x/plate_image.shape[1] <=0.32 and 0<= y/plate_image.shape[0]<=0.6: 
+        if 0.01<=x/plate_image.shape[1] <=0.32 and 0.1<= y/plate_image.shape[0]<=0.7: 
             cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,255), 1)
             x_col.append((x,w))
             y_col.append((y,h))
