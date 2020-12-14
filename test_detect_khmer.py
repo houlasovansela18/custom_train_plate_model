@@ -45,7 +45,7 @@ def get_plate(image_path, Dmax=608, Dmin=440):
     return vehicle, LpImg,lp_type, cor
 
 # Obtain plate image and its coordinates from an image
-test_image = "Plate_examples/khmer_10_car.png"
+test_image = "Plate_examples/khmer_29_car.png"
 vehicle, LpImg,lp_type,cor = get_plate(test_image)
 print("Detect %i plate(s) in"%len(LpImg),splitext(basename(test_image))[0])
 
@@ -93,7 +93,7 @@ for c in cont:
     cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
     if lp_type == 1:
         ratio = h/w
-        if 1<=ratio<=6 and w <= 40: # Only select contour with defined ratio
+        if 1<=ratio<=6: # Only select contour with defined ratio
             if h/plate_image.shape[0]>=0.32  and x/plate_image.shape[1]>=0.32: # Select contour which has the height larger than 35% of the plate
                     # Draw bounding box around digit number
                 cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 1)
@@ -124,14 +124,18 @@ for c in cont:
 
 if lp_type == 2: 
 
-    # crop_khmer = plate_image[5:min(y_col),65:test_roi.shape[1]-65]
-    cv2.rectangle(test_roi, (65, 5), (test_roi.shape[1]-65, min(y_col)-5), (0, 255,0), 1)
+    try:
+        # crop_khmer = plate_image[5:min(y_col),65:test_roi.shape[1]-65]
+        cv2.rectangle(test_roi, (65, 5), (test_roi.shape[1]-65, min(y_col)-5), (0, 255,0), 1)
+    except:pass
     
 
 if lp_type == 1: 
 
-    # crop_khmer = plate_image[5:min(y_col),65:test_roi.shape[1]-65]
-    cv2.rectangle(test_roi, (30, 20), (min(x_col)-10,test_roi.shape[0]-40), (0, 255,0), 1)
+    try:
+        # crop_khmer = plate_image[5:min(y_col),65:test_roi.shape[1]-65]
+        cv2.rectangle(test_roi, (20, 20), (min(x_col)-30,test_roi.shape[0]-40), (0, 255,0), 1)
+    except:pass
 
 print("Detect {} letters...".format(len(crop_characters)))
 fig = plt.figure(figsize=(10,6))
@@ -173,6 +177,3 @@ for i,character in enumerate(crop_characters):
 
 print(final_string)
 plt.show()
-
-
-

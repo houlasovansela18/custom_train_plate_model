@@ -44,29 +44,6 @@ def get_plate(image_path, Dmax=608, Dmin=440):
     _ , LpImg, lp_type, cor = detect_lp(wpod_net, vehicle, bound_dim, lp_threshold=0.5)
     return vehicle, LpImg,lp_type, cor
 
-# Obtain plate image and its coordinates from an image
-test_image = "Plate_examples/khmer_03_car.png"
-vehicle, LpImg,lp_type,cor = get_plate(test_image)
-print("Detect %i plate(s) in"%len(LpImg),splitext(basename(test_image))[0])
-
-
-if len(LpImg): #check if there is at least one license image
-    # Scales, calculates absolute values, and converts the result to 8-bit.
-    plate_image = cv2.convertScaleAbs(LpImg[0], alpha=(255.0))
-    
-    # convert to grayscale and blur the image
-    gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray,(7,7),0)
-    
-    # Applied inversed thresh_binary 
-    binary = cv2.threshold(blur, 180, 255,
-                         cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-    
-    kernel3 = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    thre_mor = cv2.morphologyEx(binary, cv2.MORPH_DILATE, kernel3)
-
-
-
 def sort_contours(cnts,reverse = False):
     i = 0
     boundingBoxes = [cv2.boundingRect(c) for c in cnts]
@@ -74,58 +51,47 @@ def sort_contours(cnts,reverse = False):
                                         key=lambda b: b[1][i], reverse=reverse))
     return cnts,boundingBoxes
 
+
+def predict_from_model(image,model,labels):
+    image = cv2.resize(image,(80,80))
+    image = np.stack((image,)*3, axis=-1)
+    prediction = labels.inverse_transform([np.argmax(model.predict(image[np.newaxis,:]))])
+    return prediction
+
+# Obtain plate image and its coordinates from an image
+test_image = "Plate_examples/khmer_16_car.png"
+vehicle, LpImg,lp_type,cor = get_plate(test_image)
+print("Detect %i plate(s) in"%len(LpImg),splitext(basename(test_image))[0])
+print(lp_type,"LP typed")
+
+if len(LpImg): #check if there is at least one license image
+    # Scales, calculates absolute values, and converts the result to 8-bit.
+    plate_image = cv2.convertScaleAbs(LpImg[0], alpha=(255.0))
+    if lp_type == 1: 
+        plate_image = plate_image[15:plate_image.shape[0] - 17, 10:plate_image.shape[1]-10]
+    # convert to grayscale and blur the image
+    gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray,(7,7),0)
+    
+    # Applied inversed thresh_binary 
+    binary = cv2.threshold(blur, 0, 255,
+                         cv2.THRESH_BINARY_INV +  cv2.THRESH_OTSU)[1]
+# check to find contour more better for sementation.
+
 cont, _  = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
 
 # create a copy version "test_roi" of plat_image to draw bounding box
 test_roi = plate_image.copy()
 
 
-gray = cv2.cvtColor(test_roi,cv2.COLOR_BGR2GRAY)
-
-    # find Harris corners
-gray = np.float32(gray)
-dst = cv2.cornerHarris(gray,2,3,0.04)
-dst = cv2.dilate(dst,None)
-ret, dst = cv2.threshold(dst,0.01*dst.max(),255,0)
-dst = np.uint8(dst)
-
-    # find centroids
-ret, labels, stats, centroids = cv2.connectedComponentsWithStats(dst)
-
-    # define the criteria to stop and refine the corners
-criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.001)
-corners = cv2.cornerSubPix(gray,np.float32(centroids),(5,5),(-1,-1),criteria)
-
-res = np.hstack((centroids,corners))
-res = np.int0(res)
-# print(res)
-dis_res = []
-
-for r in res:
-    if 0.03<=r[0]/plate_image.shape[1] <=0.37 and 0.15<= r[1]/plate_image.shape[0]<=0.5: 
-        dis_res.append(r)        
-
-dis_res = np.array(dis_res)
-# print(dis_res)
-
-feat_coor = np.transpose(dis_res)
-
-feat_xcol = np.hstack((np.array(feat_coor[0]), np.array(feat_coor[2])))
-feat_ycol = np.hstack((np.array(feat_coor[1]), np.array(feat_coor[3])))
-
-
-test_roi[res[:,1],res[:,0]]=[0,0,255]
-test_roi[res[:,3],res[:,2]] = [0,255,0]
-
 def draw(x_min, x_max, y_min, y_max,constant):
 
     # print((x_max-x_min)/plate_image.shape[1])
-    if 0.15<=(x_max-x_min)/plate_image.shape[1]<=constant:
+    if 0.13<=(x_max-x_min)/plate_image.shape[1]<=constant and x_max-x_min>=90:
             cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max), (0, 255,0), 1)
     else:
         cv2.rectangle(test_roi, (min(feat_xcol), min(feat_ycol)), (max(feat_xcol), max(feat_ycol)), (0, 255,0), 1)
-        test_roi[dis_res[:,1],dis_res[:,0]]=[0,0,255]
-        test_roi[dis_res[:,3],dis_res[:,2]] = [0,255,0]
 
 
 def drawKhmer_cont():
@@ -142,10 +108,7 @@ def drawKhmer_cont():
         if lp_type == 1: draw(x_min, x_max, y_min, y_max,0.45)
         if lp_type == 2: draw(x_min, x_max, y_min, y_max,0.8)
         
-    except: 
-        cv2.rectangle(test_roi, (min(feat_xcol), min(feat_ycol)), (max(feat_xcol), max(feat_ycol)), (0, 255,0), 1)
-        test_roi[dis_res[:,1],dis_res[:,0]]=[0,0,255]
-        test_roi[dis_res[:,3],dis_res[:,2]] = [0,255,0]
+    except: pass
 
 
 # Initialize a list which will be used to append charater image
@@ -166,27 +129,27 @@ for c in cont:
             x_col.append((x,w))
             y_col.append((y,h))
         ratio = h/w
-        if 1<=ratio<=6 and w <= 40: # Only select contour with defined ratio
+        if 1<=ratio<=6: # Only select contour with defined ratio
             if h/plate_image.shape[0]>=0.32 : # Select contour which has the height larger than 35% of the plate
                 # Draw bounding box around digit number
                 cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 1)
                 # Seperrate number and gibe prediction
-                curr_num = thre_mor[y:y+h,x:x+w]
+                curr_num = binary[y:y+h,x:x+w]
                 curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
                 _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                 crop_characters.append(curr_num)
     if lp_type == 1:
-        if 0.01<=x/plate_image.shape[1] <=0.32 and 0.1<= y/plate_image.shape[0]<=0.6: 
+        if 0.01<=x/plate_image.shape[1] <=0.32 and 0<= y/plate_image.shape[0]<=0.6: 
             cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,255), 1)
             x_col.append((x,w))
             y_col.append((y,h))
         ratio = h/w
-        if 1<=ratio<=6 and w <= 40: # Only select contour with defined ratio
+        if 1<=ratio<=6: # Only select contour with defined ratio
             if h/plate_image.shape[0]>=0.32 and x/plate_image.shape[1]>=0.32: # Select contour which has the height larger than 35% of the plate
                 # Draw bounding box around digit number
                 cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 1)
                 # Seperrate number and gibe prediction
-                curr_num = thre_mor[y:y+h,x:x+w]
+                curr_num = binary[y:y+h,x:x+w]
                 curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
                 _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                 crop_characters.append(curr_num)
@@ -199,7 +162,6 @@ if lp_type == 1: drawKhmer_cont()
 
 print("Detect {} letters...".format(len(crop_characters)))
 fig = plt.figure(figsize=(10,6))
-plt.axis(False)
 plt.imshow(test_roi)
 plt.show()
 
@@ -215,11 +177,6 @@ labels = LabelEncoder()
 labels.classes_ = np.load('license_character_classes.npy')
 print("[INFO] Labels loaded successfully...")
 
-def predict_from_model(image,model,labels):
-    image = cv2.resize(image,(80,80))
-    image = np.stack((image,)*3, axis=-1)
-    prediction = labels.inverse_transform([np.argmax(model.predict(image[np.newaxis,:]))])
-    return prediction
 
 fig = plt.figure(figsize=(15,3))
 cols = len(crop_characters)
@@ -237,6 +194,3 @@ for i,character in enumerate(crop_characters):
 
 print(final_string)
 plt.show()
-
-
-
