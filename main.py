@@ -28,7 +28,8 @@ wpod_net_path = "wpod-net.json"
 wpod_net = load_model(wpod_net_path)
 
 def preprocess_image(image_path,resize=False):
-    img = cv2.imread(image_path)
+    # img = cv2.imread(image_path)
+    img = image_path
     # img = cv2.convertScaleAbs(img, alpha=0.5, beta=100)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = img / 255
@@ -42,7 +43,7 @@ def get_plate(image_path, Dmax=608, Dmin=440):
     ratio = float(max(vehicle.shape[:2])) / min(vehicle.shape[:2])
     side = int(ratio * Dmin)
     bound_dim = min(side, Dmax)
-    _ , LpImg, lp_type, cor = detect_lp(wpod_net, vehicle, bound_dim, lp_threshold=0.5)
+    _ , LpImg, lp_type, cor = detect_lp(wpod_net, vehicle, bound_dim, lp_threshold=0.85)
     return vehicle, LpImg,lp_type, cor
 
 def sort_contours(cnts,reverse = False):
@@ -72,14 +73,13 @@ def drawKhmer_cont():
     except: pass
 
 # Obtain plate image and its coordinates from an image
-test_image = "Plate_examples/khmer_30_car.png"
+test_image = "Plate_examples/khmer_moto_02.png"
 vehicle, LpImg,lp_type,cor = get_plate(test_image)
 print("Detect %i plate(s) in"%len(LpImg),splitext(basename(test_image))[0])
 print(lp_type,"LP typed")
 
 if len(LpImg): #check if there is at least one license image
     # Scales, calculates absolute values, and converts the result to 8-bit.
-    plt.imshow(LpImg[0])
     plate_image = cv2.convertScaleAbs(LpImg[0], alpha=(255.0))
     if lp_type == 1: plate_image = plate_image[15:plate_image.shape[0] - 17, 10:plate_image.shape[1]-10]
     else:plate_image = plate_image[10:plate_image.shape[0] - 30, 0:plate_image.shape[1]-10]
@@ -88,8 +88,8 @@ if len(LpImg): #check if there is at least one license image
     blur = cv2.GaussianBlur(gray,(7,7),0)
     
     # Applied inversed thresh_binary 
-    binary = cv2.threshold(blur, 0, 255,
-                         cv2.THRESH_BINARY_INV +  cv2.THRESH_OTSU)[1]
+    binary = cv2.threshold(blur, 0, 255,cv2.THRESH_BINARY_INV +  cv2.THRESH_OTSU)[1]
+    # binary = cv2.adaptiveThreshold(blur,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,3,1)[1]
 # check to find contour more better for sementation.
 
 cont, _  = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
