@@ -83,7 +83,7 @@ def prep_image(image_path):
     if (len(LpImg)):
         # Scales, calculates absolute values, and converts the result to 8-bit.
         plate_image = cv2.convertScaleAbs(LpImg[0], alpha=(255.0))
-        if lp_type == 1: plate_image = plate_image[15:plate_image.shape[0] - 17, 10:plate_image.shape[1]-20]
+        if lp_type == 1: plate_image = plate_image[15:plate_image.shape[0] - 17, 10:plate_image.shape[1]-15]
         else:plate_image = plate_image[10:plate_image.shape[0] - 30, 0:plate_image.shape[1]-10]
         # convert to grayscale and blur the image
         gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
@@ -225,8 +225,8 @@ if __name__ == "__main__":
     # p1.start()
     # p2.start()
 
-    cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_32_car.png")
-    # cont,binary,plate_image,lp_type = prep_image("frame1.png")
+    # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_32_car.png")
+    cont,binary,plate_image,lp_type = prep_image("frame1.png")
 
     # Initialize a list which will be used to append charater images
     crop_characters = detection_char(cont,binary,plate_image)
