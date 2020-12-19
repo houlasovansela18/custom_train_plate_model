@@ -61,9 +61,6 @@ if len(LpImg): #check if there is at least one license image
     # Applied inversed thresh_binary 
     binary = cv2.threshold(blur, 180, 255,
                          cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
-    
-    kernel3 = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    thre_mor = cv2.morphologyEx(binary, cv2.MORPH_DILATE, kernel3)
 
 
 
@@ -102,7 +99,7 @@ for c in cont:
                 y_col.append(y)
                 y_col.append(y+h)
                     # Seperrate number and gibe prediction
-                curr_num = thre_mor[y:y+h,x:x+w]
+                curr_num = binary[y:y+h,x:x+w]
                 curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
                 _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                 crop_characters.append(curr_num)
@@ -117,7 +114,7 @@ for c in cont:
                 y_col.append(y)
                 y_col.append(y+h)
                     # Seperrate number and gibe prediction
-                curr_num = thre_mor[y:y+h,x:x+w]
+                curr_num = binary[y:y+h,x:x+w]
                 curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
                 _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                 crop_characters.append(curr_num)
