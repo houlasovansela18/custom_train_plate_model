@@ -1,7 +1,5 @@
 import numpy as np
 import cv2 as cv
-import main as main
-
 
 cap = cv.VideoCapture('vid_02.mp4')
 kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE,(3,3))
@@ -32,8 +30,3 @@ while(1):
     cv.rectangle(frame, (x_min, y_min), (k_value, y_max), (0, 255,0), 2)
     # car_crop = frame[k_value:y_max, x_min:x_max]
     cv.imshow('frame',frame)
-    k = cv.waitKey(30) & 0xff
-    if k == 27:
-        break
-cap.release()
-cv.destroyAllWindows()

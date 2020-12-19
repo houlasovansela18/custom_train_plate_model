@@ -24,19 +24,15 @@ def load_model(path):
     except Exception as e:
         print("Error",e)
 
-wpod_net_path = "wpod-net.json"
-wpod_net = load_model(wpod_net_path)
-
 def preprocess_image(image_path,resize=False):
-    # img = cv2.imread(image_path)
-    img = image_path
+    img = cv2.imread(image_path)
+    # img = image_path
     # img = cv2.convertScaleAbs(img, alpha=0.5, beta=100)
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = img / 255
     if resize:
         img = cv2.resize(img, (224,224))
     return img
-
 
 def get_plate(image_path, Dmax=608, Dmin=440):
     vehicle = preprocess_image(image_path)
@@ -53,7 +49,6 @@ def sort_contours(cnts,reverse = False):
                                         key=lambda b: b[1][i], reverse=reverse))
     return cnts,boundingBoxes
 
-
 def predict_from_model(image,model,labels):
     image = cv2.resize(image,(80,80))
     image = np.stack((image,)*3, axis=-1)
@@ -67,114 +62,162 @@ def drawKhmer_cont():
         y_min = min(y_col)[0]
         x_max = max([ i[0]+i[1]  for i in x_col])
         y_max = max([ i[0]+i[1]  for i in y_col])
-        khmer_org_crop = test_roi[y_min:y_max, x_min:x_max]
-        cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max), (0, 255,0), 1)
+        # khmer_org_crop = test_roi[y_min:y_max, x_min:x_max]
+        if lp_type == 2:
+            cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max+10), (0, 255,0), 1)
+        else: cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max), (0, 255,0), 1)
         
     except: pass
 
-# Obtain plate image and its coordinates from an image
-test_image = "Plate_examples/khmer_moto_02.png"
-vehicle, LpImg,lp_type,cor = get_plate(test_image)
-print("Detect %i plate(s) in"%len(LpImg),splitext(basename(test_image))[0])
-print(lp_type,"LP typed")
+def detection_char(cont):
 
-if len(LpImg): #check if there is at least one license image
-    # Scales, calculates absolute values, and converts the result to 8-bit.
-    plate_image = cv2.convertScaleAbs(LpImg[0], alpha=(255.0))
-    if lp_type == 1: plate_image = plate_image[15:plate_image.shape[0] - 17, 10:plate_image.shape[1]-10]
-    else:plate_image = plate_image[10:plate_image.shape[0] - 30, 0:plate_image.shape[1]-10]
-    # convert to grayscale and blur the image
-    gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray,(7,7),0)
+
+    for c in cont:
+        (x, y, w, h) = cv2.boundingRect(c)
+        cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
+        if lp_type == 2:
+            if 0.22<=x/plate_image.shape[1]<=0.73 and 0<=y/plate_image.shape[0]<=0.32:
+                cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,255), 1)
+                x_col.append((x,w))
+                y_col.append((y,h))
+            ratio = h/w
+            if 1<=ratio<=6: # Only select contour with defined ratio
+                if h/plate_image.shape[0]>=0.32 : # Select contour which has the height larger than 35% of the plate
+                    # Draw bounding box around digit number
+                    cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 1)
+                    # Seperrate number and gibe prediction
+                    curr_num = binary[y:y+h,x:x+w]
+                    curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
+                    _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+                    crop_characters.append(curr_num)
+        if lp_type == 1:
+            if 0<=x/plate_image.shape[1] <=0.28 and 0.1<= y/plate_image.shape[0]<=0.7: 
+                cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,255), 1)
+                x_col.append((x,w))
+                y_col.append((y,h))
+            ratio = h/w
+            if 1<=ratio<=6: # Only select contour with defined ratio
+                if h/plate_image.shape[0]>=0.32 and x/plate_image.shape[1]>=0.28: # Select contour which has the height larger than 35% of the plate
+                    # Draw bounding box around digit number
+                    cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 1)
+                    # Seperrate number and gibe prediction
+                    curr_num = binary[y:y+h,x:x+w]
+                    curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
+                    _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+                    crop_characters.append(curr_num)
+
+    drawKhmer_cont()
+    print("Detect {} letters...".format(len(crop_characters)))
+    fig = plt.figure(figsize=(10,6))
+    plt.imshow(test_roi)
+    plt.show()
+
+def recognition_char():
+    # Load model architecture, weight and labels
+    json_file = open('MobileNets_character_recognition.json', 'r')
+    loaded_model_json = json_file.read()
+    json_file.close()
+    model = model_from_json(loaded_model_json)
+    model.load_weights("License_character_recognition_weight.h5")
+    print("[INFO] Model loaded successfully...")
+
+    labels = LabelEncoder()
+    labels.classes_ = np.load('license_character_classes.npy')
+    print("[INFO] Labels loaded successfully...")
+
+
+    fig = plt.figure(figsize=(15,3))
+    cols = len(crop_characters)
+    grid = gridspec.GridSpec(ncols=cols,nrows=1,figure=fig)
+    final_string = ''
+    for i,character in enumerate(crop_characters):
+        fig.add_subplot(grid[i])
+        title = np.array2string(predict_from_model(character,model,labels))
+        # if title.strip("'[]") == "P":
+        #     cv2.imwrite("dataset_characters/R/R_1017.jpg",character)
+        plt.title('{}'.format(title.strip("'[]"),fontsize=20))
+        final_string+=title.strip("'[]")
+        plt.axis(False)
+        plt.imshow(character,cmap='Blues_r')
+
+    print(final_string)
+    plt.show()
+
+def get_frame():
+
+    cap = cv2.VideoCapture('vid_02.mp4')
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3))
+    fgbg = cv2.bgsegm.createBackgroundSubtractorMOG()
+
+
+    while(1):
+        x_col, y_col = [],[]
+        x_min, x_max, y_min, y_max,k_value = 0,0,0,0,0
+        ret, frame = cap.read()
+        fgmask = fgbg.apply(frame)
+        fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_OPEN, kernel)
+        cont, _  = cv2.findContours(fgmask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        for c in cont:
+            (x, y, w, h) = cv2.boundingRect(c)
+            if w/h > 1.3 and w>=100:
+                x_col.append((x,w))
+                y_col.append((y,h))
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0,255), 2)
+        try:
+            x_min = min(x_col)[0]
+            y_min = min(y_col)[0]
+            x_max = max([ i[0]+i[1]  for i in x_col])
+            y_max = max([ i[0]+i[1]  for i in y_col])
+            k_value = int(x_max - (x_max-x_min)*0.2)
+
+        except:pass
+        cv2.rectangle(frame, (x_min, y_min), (k_value, y_max), (0, 255,0), 2)
+        car_frame = frame[k_value:y_max, x_min:x_max]
+
+
+if __name__ == "__main__":
+
+    # load plate detection model>>
     
-    # Applied inversed thresh_binary 
-    binary = cv2.threshold(blur, 0, 255,cv2.THRESH_BINARY_INV +  cv2.THRESH_OTSU)[1]
-    # binary = cv2.adaptiveThreshold(blur,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,3,1)[1]
-# check to find contour more better for sementation.
+    wpod_net_path = "wpod-net.json"
+    wpod_net = load_model(wpod_net_path)
 
-cont, _  = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # get frame from ip_cam>>
+    get_frame()
 
+    # Obtain plate image and its coordinates from an image
+    test_image = "Plate_examples/khmer_moto_02.png"
+    vehicle, LpImg,lp_type,cor = get_plate(test_image)
+    print("Detect %i plate(s) in"%len(LpImg),splitext(basename(test_image))[0])
+    print(lp_type,"LP typed")
 
-# create a copy version "test_roi" of plat_image to draw bounding box
-test_roi = plate_image.copy()
+    if len(LpImg): #check if there is at least one license image
+        # Scales, calculates absolute values, and converts the result to 8-bit.
+        plate_image = cv2.convertScaleAbs(LpImg[0], alpha=(255.0))
+        if lp_type == 1: plate_image = plate_image[15:plate_image.shape[0] - 17, 10:plate_image.shape[1]-10]
+        else:plate_image = plate_image[10:plate_image.shape[0] - 30, 0:plate_image.shape[1]-10]
+        # convert to grayscale and blur the image
+        gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
+        blur = cv2.GaussianBlur(gray,(7,7),0)
+        
+        # Applied inversed thresh_binary 
+        binary = cv2.threshold(blur, 0, 255,cv2.THRESH_BINARY_INV +  cv2.THRESH_OTSU)[1]
+        # binary = cv2.adaptiveThreshold(blur,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY_INV,3,1)[1]
+    # check to find contour more better for sementation.
 
-# Initialize a list which will be used to append charater image
-crop_characters = []
+    cont, _  = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-# define standard width and height of character
-digit_w, digit_h = 30, 60
-x_col, y_col = [],[]
-cont, boundingBox = sort_contours(cont)
-x_min, x_max, y_min, y_max = 0,0,0,0
+    # create a copy version "test_roi" of plat_image to draw bounding box
+    test_roi = plate_image.copy()
 
-for c in cont:
-    (x, y, w, h) = cv2.boundingRect(c)
-    cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
-    if lp_type == 2:
-        if 0.22<=x/plate_image.shape[1]<=0.73 and 0<=y/plate_image.shape[0]<=0.32:
-            cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,255), 1)
-            x_col.append((x,w))
-            y_col.append((y,h))
-        ratio = h/w
-        if 1<=ratio<=6: # Only select contour with defined ratio
-            if h/plate_image.shape[0]>=0.32 : # Select contour which has the height larger than 35% of the plate
-                # Draw bounding box around digit number
-                cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 1)
-                # Seperrate number and gibe prediction
-                curr_num = binary[y:y+h,x:x+w]
-                curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
-                _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-                crop_characters.append(curr_num)
-    if lp_type == 1:
-        if 0<=x/plate_image.shape[1] <=0.28 and 0.1<= y/plate_image.shape[0]<=0.7: 
-            cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,255), 1)
-            x_col.append((x,w))
-            y_col.append((y,h))
-        ratio = h/w
-        if 1<=ratio<=6: # Only select contour with defined ratio
-            if h/plate_image.shape[0]>=0.32 and x/plate_image.shape[1]>=0.28: # Select contour which has the height larger than 35% of the plate
-                # Draw bounding box around digit number
-                cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 1)
-                # Seperrate number and gibe prediction
-                curr_num = binary[y:y+h,x:x+w]
-                curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
-                _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-                crop_characters.append(curr_num)
+    # define standard width and height of character
+    digit_w, digit_h = 30, 60
+    x_col, y_col = [],[]
+    cont, boundingBox = sort_contours(cont)
+    x_min, x_max, y_min, y_max = 0,0,0,0
 
-drawKhmer_cont()
+    # Initialize a list which will be used to append charater image
+    crop_characters = []
+    detection_char(cont)
 
-
-print("Detect {} letters...".format(len(crop_characters)))
-fig = plt.figure(figsize=(10,6))
-plt.imshow(test_roi)
-plt.show()
-
-# Load model architecture, weight and labels
-json_file = open('MobileNets_character_recognition.json', 'r')
-loaded_model_json = json_file.read()
-json_file.close()
-model = model_from_json(loaded_model_json)
-model.load_weights("License_character_recognition_weight.h5")
-print("[INFO] Model loaded successfully...")
-
-labels = LabelEncoder()
-labels.classes_ = np.load('license_character_classes.npy')
-print("[INFO] Labels loaded successfully...")
-
-
-fig = plt.figure(figsize=(15,3))
-cols = len(crop_characters)
-grid = gridspec.GridSpec(ncols=cols,nrows=1,figure=fig)
-final_string = ''
-for i,character in enumerate(crop_characters):
-    fig.add_subplot(grid[i])
-    title = np.array2string(predict_from_model(character,model,labels))
-    if title.strip("'[]") == "P":
-        cv2.imwrite("dataset_characters/R/R_1017.jpg",character)
-    plt.title('{}'.format(title.strip("'[]"),fontsize=20))
-    final_string+=title.strip("'[]")
-    plt.axis(False)
-    plt.imshow(character,cmap='Blues_r')
-
-print(final_string)
-plt.show()
+    recognition_char()
