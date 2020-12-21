@@ -7,6 +7,7 @@ import matplotlib.gridspec as gridspec
 import queue
 import threading
 import time
+import re
 
 from local_utils import detect_lp
 from os.path import splitext,basename
@@ -111,10 +112,10 @@ def drawKhmer_cont(test_roi,x_col,y_col,lp_type):
         y_max = max([ i[0]+i[1]  for i in y_col])
         
         if lp_type == 2:
-            cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max+10), (0, 255,0), 1)
+            # cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max+10), (0, 255,0), 1)
             khmer_org_crop = test_roi[y_min:y_max+10, x_min:x_max]
         if lp_type == 1: 
-            cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max), (0, 255,0), 1)
+            # cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max), (0, 255,0), 1)
             khmer_org_crop = test_roi[y_min:y_max, x_min:x_max]
         
         return khmer_org_crop
@@ -166,7 +167,7 @@ def detection_char(cont,binary,plate_image,lp_type):
                     _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                     crop_characters.append(curr_num)
     
-    drawKhmer_cont(test_roi,x_col,y_col,lp_type)
+    khmer_org_crop = drawKhmer_cont(test_roi,x_col,y_col,lp_type)
 
     print("Detect {} letters...".format(len(crop_characters)))
     # fig = plt.figure(figsize=(10,6))
@@ -194,12 +195,13 @@ def recognition_char(crop_characters):
     # plt.show()
     return final_string
 
+
 def Receive():
     print("start Receive")
 #     cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
     cap = cv2.VideoCapture("vid_04.mp4")
     ret, frame = cap.read()
-    height, width, channels = frame.shape
+    # height, width, channels = frame.shape
 
 #     q.put(frame[30:height, 0: width // 2])
     q.put(frame)
@@ -226,9 +228,10 @@ def Display():
 
             # Initialize a list which will be used to append charater images
             crop_characters,khmer_org_crop = detection_char(cont,binary,plate_image,lp_type)
-
-            result = recognition_char(crop_characters)
-            print(result)
+            if len(crop_characters) >= 5: 
+                plate_id = recognition_char(crop_characters)
+                print(plate_id)
+            else: print("No plate ID detected>>")
         except: pass
 
 if __name__ == "__main__":
@@ -240,8 +243,8 @@ if __name__ == "__main__":
     p1.start()
     p2.start()
 
-    # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_32_car.png")
-    # cont,binary,plate_image,lp_type = prep_image("frame1.png")
+    # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_35_car.jpg")
+    # # cont,binary,plate_image,lp_type = prep_image("frame1.png")
 
     # # Initialize a list which will be used to append charater images
     # crop_characters = detection_char(cont,binary,plate_image)
