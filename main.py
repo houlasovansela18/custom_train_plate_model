@@ -199,7 +199,7 @@ def recognition_char(crop_characters):
 def Receive():
     print("start Receive")
 #     cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
-    cap = cv2.VideoCapture("vid_04.mp4")
+    cap = cv2.VideoCapture("vid_02.mp4")
     ret, frame = cap.read()
     # height, width, channels = frame.shape
 
@@ -236,12 +236,12 @@ def Display():
 
 if __name__ == "__main__":
 
-    wpod_net,model,labels  = run_load_model()
     q = queue.Queue()
     p1 = threading.Thread(target=Receive)
     p2 = threading.Thread(target=Display)
     p1.start()
     p2.start()
+    wpod_net,model,labels  = run_load_model()
 
     # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_35_car.jpg")
     # # cont,binary,plate_image,lp_type = prep_image("frame1.png")
