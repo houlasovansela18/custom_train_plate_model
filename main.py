@@ -102,22 +102,26 @@ def predict_from_model(image,model,labels):
     prediction = labels.inverse_transform([np.argmax(model.predict(image[np.newaxis,:]))])
     return prediction
 
-def drawKhmer_cont(test_roi,x_col,y_col):
+def drawKhmer_cont(test_roi,x_col,y_col,lp_type):
 
     try :
         x_min = min(x_col)[0]
         y_min = min(y_col)[0]
         x_max = max([ i[0]+i[1]  for i in x_col])
         y_max = max([ i[0]+i[1]  for i in y_col])
-        # khmer_org_crop = test_roi[y_min:y_max, x_min:x_max]
+        
         if lp_type == 2:
             cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max+10), (0, 255,0), 1)
+            khmer_org_crop = test_roi[y_min:y_max+10, x_min:x_max]
         if lp_type == 1: 
             cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max), (0, 255,0), 1)
+            khmer_org_crop = test_roi[y_min:y_max, x_min:x_max]
+        
+        return khmer_org_crop
         
     except: pass
 
-def detection_char(cont,binary,plate_image):
+def detection_char(cont,binary,plate_image,lp_type):
 
     # create a copy version "test_roi" of plat_image to draw bounding box
     test_roi = plate_image.copy()
@@ -162,36 +166,36 @@ def detection_char(cont,binary,plate_image):
                     _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                     crop_characters.append(curr_num)
     
-    drawKhmer_cont(test_roi,x_col,y_col)
+    drawKhmer_cont(test_roi,x_col,y_col,lp_type)
 
     print("Detect {} letters...".format(len(crop_characters)))
-    fig = plt.figure(figsize=(10,6))
-    plt.imshow(test_roi)
-    plt.show()
-    return crop_characters
+    # fig = plt.figure(figsize=(10,6))
+    # plt.imshow(test_roi)
+    # plt.show()
+    return crop_characters,khmer_org_crop
 
 def recognition_char(crop_characters):
 
 
-    fig = plt.figure(figsize=(15,3))
-    cols = len(crop_characters)
-    grid = gridspec.GridSpec(ncols=cols,nrows=1,figure=fig)
+    # fig = plt.figure(figsize=(15,3))
+    # cols = len(crop_characters)
+    # grid = gridspec.GridSpec(ncols=cols,nrows=1,figure=fig)
     final_string = ''
     for i,character in enumerate(crop_characters):
-        fig.add_subplot(grid[i])
+        # fig.add_subplot(grid[i])
         title = np.array2string(predict_from_model(character,model,labels))
         # if title.strip("'[]") == "P":
         #     cv2.imwrite("dataset_characters/R/R_1017.jpg",character)
-        plt.title('{}'.format(title.strip("'[]"),fontsize=20))
+        # plt.title('{}'.format(title.strip("'[]"),fontsize=20))
         final_string+=title.strip("'[]")
-        plt.axis(False)
-        plt.imshow(character,cmap='Blues_r')
+        # plt.axis(False)
+        # plt.imshow(character,cmap='Blues_r')
 
-    plt.show()
+    # plt.show()
     return final_string
 
 def Receive():
-    print("start Reveive")
+    print("start Receive")
 #     cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
     cap = cv2.VideoCapture("vid_04.mp4")
     ret, frame = cap.read()
@@ -216,20 +220,31 @@ def Display():
         cv2.imwrite("frame1.png", frame)
         print(frame.shape)
 
+        # for testing 
+        try :
+            cont,binary,plate_image,lp_type = prep_image("frame1.png")
+
+            # Initialize a list which will be used to append charater images
+            crop_characters,khmer_org_crop = detection_char(cont,binary,plate_image,lp_type)
+
+            result = recognition_char(crop_characters)
+            print(result)
+        except: pass
+
 if __name__ == "__main__":
 
     wpod_net,model,labels  = run_load_model()
     q = queue.Queue()
-    # p1 = threading.Thread(target=Receive)
-    # p2 = threading.Thread(target=Display)
-    # p1.start()
-    # p2.start()
+    p1 = threading.Thread(target=Receive)
+    p2 = threading.Thread(target=Display)
+    p1.start()
+    p2.start()
 
     # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_32_car.png")
-    cont,binary,plate_image,lp_type = prep_image("frame1.png")
+    # cont,binary,plate_image,lp_type = prep_image("frame1.png")
 
-    # Initialize a list which will be used to append charater images
-    crop_characters = detection_char(cont,binary,plate_image)
+    # # Initialize a list which will be used to append charater images
+    # crop_characters = detection_char(cont,binary,plate_image)
 
-    result = recognition_char(crop_characters)
-    print(result)
+    # result = recognition_char(crop_characters)
+    # print(result)
