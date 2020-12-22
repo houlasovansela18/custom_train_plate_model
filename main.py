@@ -177,24 +177,20 @@ def detection_char(cont,binary,plate_image,lp_type):
 
 def recognition_char(crop_characters):
 
-
-    # fig = plt.figure(figsize=(15,3))
-    # cols = len(crop_characters)
-    # grid = gridspec.GridSpec(ncols=cols,nrows=1,figure=fig)
     final_string = ''
     for i,character in enumerate(crop_characters):
         # fig.add_subplot(grid[i])
         title = np.array2string(predict_from_model(character,model,labels))
         # if title.strip("'[]") == "P":
         #     cv2.imwrite("dataset_characters/R/R_1017.jpg",character)
-        # plt.title('{}'.format(title.strip("'[]"),fontsize=20))
         final_string+=title.strip("'[]")
-        # plt.axis(False)
-        # plt.imshow(character,cmap='Blues_r')
 
-    # plt.show()
     return final_string
 
+def post_Processing(raw_plate_collection):
+
+    plate_id_result = max(raw_plate_collection,key=raw_plate_collection.count)
+    return ("No Predicted plate_id result",plate_id_result)[raw_plate_collection.count(plate_id_result) > 3] 
 
 def Receive():
     print("start Receive")
@@ -216,25 +212,36 @@ def Receive():
 
 def Display():
     print("Start Displaying")
+    raw_plate_collection = []
     time.sleep(1)
     while True:
         frame = q.get()
         cv2.imwrite("frame1.png", frame)
+        
         print(frame.shape)
-
+        
         # for testing 
         try :
             cont,binary,plate_image,lp_type = prep_image("frame1.png")
-
+            
             # Initialize a list which will be used to append charater images
             crop_characters,khmer_org_crop = detection_char(cont,binary,plate_image,lp_type)
             if len(crop_characters) >= 5: 
                 plate_id = recognition_char(crop_characters)
-                print(plate_id)
-            else: print("No plate ID detected>>")
+                print("Detected result",plate_id)
+                raw_plate_collection.append(plate_id)
+            else: print("No proper plate_id detected>>")
+            if len(raw_plate_collection) >= 5:
+               finale_result  = post_Processing(raw_plate_collection)
+               print("Predicted result: >>>>>>>>>>>>>>>>",finale_result,"<<<<<<<<<<<<<<<<")
+               raw_plate_collection = []
         except: pass
 
+   
+
 if __name__ == "__main__":
+
+    # FOR VIDEO TESTING>>>>
 
     q = queue.Queue()
     p1 = threading.Thread(target=Receive)
@@ -242,6 +249,8 @@ if __name__ == "__main__":
     p1.start()
     p2.start()
     wpod_net,model,labels  = run_load_model()
+
+    # FOR IMAGE TESTING>>>>>
 
     # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_35_car.jpg")
     # # cont,binary,plate_image,lp_type = prep_image("frame1.png")
