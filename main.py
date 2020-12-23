@@ -84,7 +84,7 @@ def prep_image(image_path):
         # Scales, calculates absolute values, and converts the result to 8-bit.
         plate_image = cv2.convertScaleAbs(LpImg[0], alpha=(255.0))
         if lp_type == 1: plate_image = plate_image[15:plate_image.shape[0] - 17, 10:plate_image.shape[1]-15]
-        else:plate_image = plate_image[10:plate_image.shape[0] - 30, 0:plate_image.shape[1]-10]
+        else:plate_image = plate_image[10:plate_image.shape[0] - 40, 10:plate_image.shape[1]-5]
         # convert to grayscale and blur the image
         gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray,(5,5),0)    
@@ -136,15 +136,15 @@ def detection_char(cont,binary,plate_image,lp_type):
         (x, y, w, h) = cv2.boundingRect(c)
         cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
         if lp_type == 2:
-            if 0.22<=x/plate_image.shape[1]<=0.73 and 0<=y/plate_image.shape[0]<=0.32:
-                cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,255), 1)
+            if 0.1<=x/plate_image.shape[1]<=0.73 and 0<=y/plate_image.shape[0]<=0.32:
+                cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,255), 2)
                 x_col.append((x,w))
                 y_col.append((y,h))
             ratio = h/w
-            if 1<=ratio<=6: # Only select contour with defined ratio
-                if h/plate_image.shape[0]>=0.32 : # Select contour which has the height larger than 35% of the plate
+            if 1<=ratio<=6 and 0.4<=h/plate_image.shape[0]<=0.9: # Only select contour with defined ratio
+                if y/plate_image.shape[1]>=0.2 and x/plate_image.shape[1]>=0: # Select contour which has the height larger than 35% of the plate
                     # Draw bounding box around digit number
-                    cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 1)
+                    cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 2)
                     # Seperrate number and gibe prediction
                     curr_num = binary[y:y+h,x:x+w]
                     curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
@@ -167,8 +167,8 @@ def detection_char(cont,binary,plate_image,lp_type):
                     crop_characters.append(curr_num)
     
     khmer_org_crop = drawKhmer_cont(test_roi,x_col,y_col,lp_type)
-
     print("Detect {} letters...".format(len(crop_characters)))
+    cv2.imwrite("plate_id.png",test_roi)
     # fig = plt.figure(figsize=(10,6))
     # plt.imshow(test_roi)
     # plt.show()
@@ -191,28 +191,75 @@ def post_Processing(raw_plate_collection):
     plate_id_result = max(raw_plate_collection,key=raw_plate_collection.count)
     rex = re.compile("[1-5][A-Z]{1,2}[0-9]{4}$")
     if plate_id_result.isalnum() and rex.match(plate_id_result):
-        return ("No Predicted plate_id result",plate_id_result)[raw_plate_collection.count(plate_id_result) >= 3] 
+            return ("No Predicted plate_id result",plate_id_result)[raw_plate_collection.count(plate_id_result) >= 2] 
     elif plate_id_result.isalpha():
-        return ("No Predicted plate_id result",plate_id_result)[raw_plate_collection.count(plate_id_result) >= 3] 
+        return ("No Predicted plate_id result",plate_id_result)[raw_plate_collection.count(plate_id_result) >= 2] 
     else: return "No Predicted plate_id result"
+
+# def Receive():
+#     print("start Receive")
+# #     cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
+#     cap = cv2.VideoCapture("vid_07.mp4")
+#     ret, frame1 = cap.read()
+#     ret, frame2 = cap.read()
+    
+# #    while ret:
+#     while(cap.isOpened()):
+#         # Difference between frame1(image) and frame2(image)
+#         diff = cv2.absdiff(frame1, frame2)
+
+#        # Converting color image to gray_scale image
+#         gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+
+#        # Converting gray scale image to GaussianBlur, so that change can be find easily 
+#         blur = cv2.GaussianBlur(gray, (5, 5), 0)
+
+#        # If pixel value is greater than 20, it is assigned white(255) otherwise black
+#         _, thresh = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
+#         dilated = cv2.dilate(thresh, None, iterations=4)
+
+#        # finding contours of moving object
+#         contours, hirarchy = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+#         try:
+#             conts,boundingBox  = sort_contours(contours)
+#             sorted_by_second = sorted(boundingBox, key=lambda tup: tup[3],reverse=True)
+#             (x, y, w, h) = sorted_by_second[0]
+#             if w >= 150 and h >= 150:
+#             # cv2.rectangle(frame1, (x, y), (x + w, y + h), (0, 255,0), 1)
+#                 car_crop = frame1[y:y+h,x:x+w]
+#             # cv2.imshow('Car Crop', car_crop)
+#                 q.put(car_crop)
+#         except:pass
+
+#         # Assign frame2(image) to frame1(image)
+#         frame1 = frame2
+
+#        #Read new frame2
+#         ret, frame2 = cap.read()
+#         time.sleep(0.2)
 
 def Receive():
     print("start Receive")
 #     cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
-    cap = cv2.VideoCapture("vid_04.mp4")
+    cap = cv2.VideoCapture("vid_07.mp4")
     ret, frame = cap.read()
+    # height, width, channels = frame.shape
+    # width = int(width//1.1)
+    # q.put(frame[30:height, 0: width])
     q.put(frame)
 #    while ret:
     while(cap.isOpened()):
         ret, frame = cap.read()
         if ret:
+#             height, width, channels = frame.shape
             q.put(frame)
-            # time.sleep(0.3)
+            # q.put(frame[30:height, 0: width])
+            time.sleep(0.2)
 
 def Display():
     print("Start Displaying")
     raw_plate_collection = []
-    # time.sleep(1)
     while True:
         frame = q.get()
         cv2.imwrite("frame1.png", frame)
@@ -231,7 +278,7 @@ def Display():
                 print("Detected result",plate_id)
                 raw_plate_collection.append(plate_id)
             else: print("No proper plate_id detected>>")
-            if len(raw_plate_collection) >= 7:
+            if len(raw_plate_collection) == 5:
                 finale_result  = post_Processing(raw_plate_collection)
                 print("Predicted result: >>>>>>>>>>>>>>>>",finale_result,"<<<<<<<<<<<<<<<<")
                 raw_plate_collection = []
@@ -242,6 +289,8 @@ def Display():
 
 if __name__ == "__main__":
 
+    wpod_net,model,labels  = run_load_model()
+
     # FOR VIDEO TESTING>>>>
 
     q = queue.Queue()
@@ -249,15 +298,14 @@ if __name__ == "__main__":
     p2 = threading.Thread(target=Display)
     p1.start()
     p2.start()
-    wpod_net,model,labels  = run_load_model()
+    
 
     # FOR IMAGE TESTING>>>>>
 
-    # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_35_car.jpg")
-    # # cont,binary,plate_image,lp_type = prep_image("frame1.png")
+    # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_33_car.png")
+    # cont,binary,plate_image,lp_type = prep_image("frame1.png")
 
     # # Initialize a list which will be used to append charater images
-    # crop_characters = detection_char(cont,binary,plate_image)
-
+    # crop_characters,khmer_org_crop = detection_char(cont,binary,plate_image,lp_type)
     # result = recognition_char(crop_characters)
     # print(result)
