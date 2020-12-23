@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 
 
-cap = cv2.VideoCapture('vid_02.mp4')
+cap = cv2.VideoCapture('vid_04.mp4')
 kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(3,3))
 fgbg = cv2.bgsegm.createBackgroundSubtractorMOG()
 

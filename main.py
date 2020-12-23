@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import keras
 import glob
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -178,7 +177,7 @@ def detection_char(cont,binary,plate_image,lp_type):
 def recognition_char(crop_characters):
 
     final_string = ''
-    for i,character in enumerate(crop_characters):
+    for character in crop_characters:
         # fig.add_subplot(grid[i])
         title = np.array2string(predict_from_model(character,model,labels))
         # if title.strip("'[]") == "P":
@@ -190,30 +189,30 @@ def recognition_char(crop_characters):
 def post_Processing(raw_plate_collection):
 
     plate_id_result = max(raw_plate_collection,key=raw_plate_collection.count)
-    return ("No Predicted plate_id result",plate_id_result)[raw_plate_collection.count(plate_id_result) > 3] 
+    rex = re.compile("[1-5][A-Z]{1,2}[0-9]{4}$")
+    if plate_id_result.isalnum() and rex.match(plate_id_result):
+        return ("No Predicted plate_id result",plate_id_result)[raw_plate_collection.count(plate_id_result) >= 3] 
+    elif plate_id_result.isalpha():
+        return ("No Predicted plate_id result",plate_id_result)[raw_plate_collection.count(plate_id_result) >= 3] 
+    else: return "No Predicted plate_id result"
 
 def Receive():
     print("start Receive")
 #     cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
-    cap = cv2.VideoCapture("vid_02.mp4")
+    cap = cv2.VideoCapture("vid_04.mp4")
     ret, frame = cap.read()
-    # height, width, channels = frame.shape
-
-#     q.put(frame[30:height, 0: width // 2])
     q.put(frame)
 #    while ret:
     while(cap.isOpened()):
         ret, frame = cap.read()
         if ret:
-            height, width, channels = frame.shape
             q.put(frame)
-#             q.put(frame[30:height, 0: width // 2])
-            time.sleep(0.3)
+            # time.sleep(0.3)
 
 def Display():
     print("Start Displaying")
     raw_plate_collection = []
-    time.sleep(1)
+    # time.sleep(1)
     while True:
         frame = q.get()
         cv2.imwrite("frame1.png", frame)
@@ -226,15 +225,17 @@ def Display():
             
             # Initialize a list which will be used to append charater images
             crop_characters,khmer_org_crop = detection_char(cont,binary,plate_image,lp_type)
+
             if len(crop_characters) >= 5: 
                 plate_id = recognition_char(crop_characters)
                 print("Detected result",plate_id)
                 raw_plate_collection.append(plate_id)
             else: print("No proper plate_id detected>>")
-            if len(raw_plate_collection) >= 5:
-               finale_result  = post_Processing(raw_plate_collection)
-               print("Predicted result: >>>>>>>>>>>>>>>>",finale_result,"<<<<<<<<<<<<<<<<")
-               raw_plate_collection = []
+            if len(raw_plate_collection) >= 7:
+                finale_result  = post_Processing(raw_plate_collection)
+                print("Predicted result: >>>>>>>>>>>>>>>>",finale_result,"<<<<<<<<<<<<<<<<")
+                raw_plate_collection = []
+
         except: pass
 
    
