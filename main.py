@@ -7,6 +7,7 @@ import queue
 import threading
 import time
 import re
+import plate_operation as plate_operation
 
 from local_utils import detect_lp
 from os.path import splitext,basename
@@ -84,7 +85,7 @@ def prep_image(image_path):
         # Scales, calculates absolute values, and converts the result to 8-bit.
         plate_image = cv2.convertScaleAbs(LpImg[0], alpha=(255.0))
         if lp_type == 1: plate_image = plate_image[15:plate_image.shape[0] - 17, 10:plate_image.shape[1]-15]
-        else:plate_image = plate_image[10:plate_image.shape[0] - 40, 10:plate_image.shape[1]-5]
+        else:plate_image = plate_image[10:plate_image.shape[0] - 32, 10:plate_image.shape[1]-5]
         # convert to grayscale and blur the image
         gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray,(5,5),0)    
@@ -191,15 +192,15 @@ def post_Processing(raw_plate_collection):
     plate_id_result = max(raw_plate_collection,key=raw_plate_collection.count)
     rex = re.compile("[1-5][A-Z]{1,2}[0-9]{4}$")
     if plate_id_result.isalnum() and rex.match(plate_id_result):
-            return ("No Predicted plate_id result",plate_id_result)[raw_plate_collection.count(plate_id_result) >= 2] 
+            return ("No Predicted plate_id result",plate_id_result)[raw_plate_collection.count(plate_id_result) >= 3] 
     elif plate_id_result.isalpha():
-        return ("No Predicted plate_id result",plate_id_result)[raw_plate_collection.count(plate_id_result) >= 2] 
+        return ("No Predicted plate_id result",plate_id_result)[raw_plate_collection.count(plate_id_result) >= 3] 
     else: return "No Predicted plate_id result"
 
 # def Receive():
 #     print("start Receive")
 # #     cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
-#     cap = cv2.VideoCapture("vid_07.mp4")
+#     cap = cv2.VideoCapture("vid_14.mp4")
 #     ret, frame1 = cap.read()
 #     ret, frame2 = cap.read()
     
@@ -242,7 +243,7 @@ def post_Processing(raw_plate_collection):
 def Receive():
     print("start Receive")
 #     cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
-    cap = cv2.VideoCapture("vid_07.mp4")
+    cap = cv2.VideoCapture("vid_16.mp4")
     ret, frame = cap.read()
     # height, width, channels = frame.shape
     # width = int(width//1.1)
@@ -255,7 +256,7 @@ def Receive():
 #             height, width, channels = frame.shape
             q.put(frame)
             # q.put(frame[30:height, 0: width])
-            time.sleep(0.2)
+            # time.sleep(0.2)
 
 def Display():
     print("Start Displaying")
@@ -269,12 +270,15 @@ def Display():
         # for testing 
         try :
             cont,binary,plate_image,lp_type = prep_image("frame1.png")
-            
+            if lp_type == 1:print("Long plate")
+            else: print("Short plate")
             # Initialize a list which will be used to append charater images
             crop_characters,khmer_org_crop = detection_char(cont,binary,plate_image,lp_type)
 
             if len(crop_characters) >= 5: 
                 plate_id = recognition_char(crop_characters)
+                if plate_id.isalnum():
+                    plate_id = plate_operation.Operation(plate_id).operation_plate()
                 print("Detected result",plate_id)
                 raw_plate_collection.append(plate_id)
             else: print("No proper plate_id detected>>")
