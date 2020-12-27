@@ -182,8 +182,8 @@ def recognition_char(crop_characters):
     for character in crop_characters:
         # fig.add_subplot(grid[i])
         title = np.array2string(predict_from_model(character,model,labels))
-        # if title.strip("'[]") == "P":
-        #     cv2.imwrite("dataset_characters/R/R_1017.jpg",character)
+        if title.strip("'[]") == "V":
+            cv2.imwrite("dataset_characters/W/W_1018.jpg",character)
         final_string+=title.strip("'[]")
 
     return final_string
@@ -212,10 +212,11 @@ def final_result_func(predicted_result,final_result):
 
     return final_result
 
+
 def Receive():
     print("start Receive")
     #    cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
-    cap = cv2.VideoCapture("vid_15.mp4")
+    cap = cv2.VideoCapture("vid_14.mp4")
     ret, frame1 = cap.read()
     ret, frame2 = cap.read()
     
@@ -243,9 +244,8 @@ def Receive():
             (x, y, w, h) = sorted_by_second[0]
             if w >= 150 and h >= 150:
             # cv2.rectangle(frame1, (x, y), (x + w, y + h), (0, 255,0), 1)
-                car_crop = frame1[y:y+h,x:x+w]
-            # cv2.imshow('Car Crop', car_crop)
-                q.put(car_crop)
+                vehicle_crop = frame1[y:y+h,x:x+w]
+                q.put(vehicle_crop)
         except:pass
 
         # Assign frame2(image) to frame1(image)
@@ -283,6 +283,7 @@ def Display():
         
         # for testing 
         try :
+
             cont,binary,plate_image,lp_type = prep_image("frame1.png")
             if lp_type == 1:print("Long plate")
             else: print("Short plate")
@@ -292,7 +293,7 @@ def Display():
                 plate_id = recognition_char(crop_characters)
                 if plate_id.isalpha() is False:
                     plate_id = plate_operation.Operation(plate_id).operation_plate()
-                # print("Detected result",plate_id)
+                print("Detected result",plate_id)
                 raw_plate_collection.append(plate_id)
             else: print("No proper plate_id detected>>")
             if len(raw_plate_collection) == 5:
@@ -306,7 +307,6 @@ def Display():
         except Exception as ex:
             print(ex)
 
-   
 
 if __name__ == "__main__":
 
