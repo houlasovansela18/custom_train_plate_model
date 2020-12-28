@@ -182,8 +182,8 @@ def recognition_char(crop_characters):
     for character in crop_characters:
         # fig.add_subplot(grid[i])
         title = np.array2string(predict_from_model(character,model,labels))
-        if title.strip("'[]") == "V":
-            cv2.imwrite("dataset_characters/W/W_1018.jpg",character)
+        # if title.strip("'[]") == "V":
+        #     cv2.imwrite("dataset_characters/W/W_1018.jpg",character)
         final_string+=title.strip("'[]")
 
     return final_string
@@ -193,9 +193,9 @@ def predicted_result_func(raw_plate_collection):
     plate_id_result = max(raw_plate_collection,key=raw_plate_collection.count)
     rex = re.compile("[1-5][A-Z]{1,2}[0-9]{4}$")
     if plate_id_result.isalnum() and rex.match(plate_id_result):
-            return ("No Predicted plate_id result",plate_id_result)[raw_plate_collection.count(plate_id_result) >= 3] 
+            return ("No Predicted plate_id result",plate_id_result)[raw_plate_collection.count(plate_id_result) == 2] 
     elif plate_id_result.isalpha():
-        return ("No Predicted plate_id result",plate_id_result)[raw_plate_collection.count(plate_id_result) >= 3] 
+        return ("No Predicted plate_id result",plate_id_result)[raw_plate_collection.count(plate_id_result) == 2] 
     else: return "No Predicted plate_id result"
 
 def final_result_func(predicted_result,final_result):
@@ -216,11 +216,10 @@ def final_result_func(predicted_result,final_result):
 def Receive():
     print("start Receive")
     #    cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
-    cap = cv2.VideoCapture("vid_14.mp4")
+    cap = cv2.VideoCapture("vid_01.mp4")
     ret, frame1 = cap.read()
     ret, frame2 = cap.read()
     
-    #    while ret:
     while(cap.isOpened()):
         # Difference between frame1(image) and frame2(image)
         diff = cv2.absdiff(frame1, frame2)
@@ -232,20 +231,21 @@ def Receive():
         blur = cv2.GaussianBlur(gray, (5, 5), 0)
 
        # If pixel value is greater than 20, it is assigned white(255) otherwise black
-        _, thresh = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
+        _,thresh = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
         dilated = cv2.dilate(thresh, None, iterations=4)
 
        # finding contours of moving object
-        contours, hirarchy = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours,_ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         try:
-            conts,boundingBox  = sort_contours(contours)
+            _,boundingBox  = sort_contours(contours)
             sorted_by_second = sorted(boundingBox, key=lambda tup: tup[3],reverse=True)
             (x, y, w, h) = sorted_by_second[0]
             if w >= 150 and h >= 150:
             # cv2.rectangle(frame1, (x, y), (x + w, y + h), (0, 255,0), 1)
                 vehicle_crop = frame1[y:y+h,x:x+w]
                 q.put(vehicle_crop)
+            else: print("searching..")
         except:pass
 
         # Assign frame2(image) to frame1(image)
@@ -296,7 +296,7 @@ def Display():
                 print("Detected result",plate_id)
                 raw_plate_collection.append(plate_id)
             else: print("No proper plate_id detected>>")
-            if len(raw_plate_collection) == 5:
+            if len(raw_plate_collection) == 2:
                 predicted_result  = predicted_result_func(raw_plate_collection)
                 if len(predicted_result) <= 10:
                     final_result = final_result_func(predicted_result,final_result)
