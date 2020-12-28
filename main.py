@@ -85,13 +85,15 @@ def prep_image(image_path):
     if (len(LpImg)):
         # Scales, calculates absolute values, and converts the result to 8-bit.
         plate_image = cv2.convertScaleAbs(LpImg[0], alpha=(255.0))
+        cv2.imwrite("original_plate.png",plate_image)
         if lp_type == 1: plate_image = plate_image[15:plate_image.shape[0] - 17, 10:plate_image.shape[1]-15]
-        else:plate_image = plate_image[10:plate_image.shape[0] - 34, 12:plate_image.shape[1]-5]
+        else:plate_image = plate_image[10:plate_image.shape[0] - 37, 5:plate_image.shape[1]-5]
         # convert to grayscale and blur the image
         gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray,(5,5),0)    
         # Applied inversed thresh_binary 
         binary = cv2.threshold(blur, 0, 255,cv2.THRESH_BINARY_INV +  cv2.THRESH_OTSU)[1]
+        cv2.imwrite("binary_plate.png",binary)
         # check to find contour more better for sementation.
 
         cont, _  = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -114,7 +116,7 @@ def drawKhmer_cont(test_roi,x_col,y_col,lp_type):
         
         if lp_type == 2:
             cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max+10), (0, 255,0), 1)
-            khmer_org_crop = test_roi[y_min:y_max+10, x_min:x_max]
+            khmer_org_crop = test_roi[y_min:y_max+5, x_min:x_max]
         if lp_type == 1: 
             cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max), (0, 255,0), 1)
             khmer_org_crop = test_roi[y_min:y_max, x_min:x_max]
@@ -123,7 +125,7 @@ def drawKhmer_cont(test_roi,x_col,y_col,lp_type):
         
     except: pass
 
-def detection_char(cont,binary,plate_image,lp_type):
+def detection_char(cont,binary,plate_image,lp_type,display = False):
 
     # create a copy version "test_roi" of plat_image to draw bounding box
     test_roi = plate_image.copy()
@@ -138,13 +140,13 @@ def detection_char(cont,binary,plate_image,lp_type):
         (x, y, w, h) = cv2.boundingRect(c)
         cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
         if lp_type == 2:
-            if 0.1<=x/plate_image.shape[1]<=0.73 and 0<=y/plate_image.shape[0]<=0.32:
+            if 0.1<=x/plate_image.shape[1]<=0.75 and 0<=y/plate_image.shape[0]<=0.40 and 0<=h/plate_image.shape[0]<=0.4:
                 cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,255), 2)
                 x_col.append((x,w))
                 y_col.append((y,h))
             ratio = h/w
-            if 1<=ratio<=6 and 0.4<=h/plate_image.shape[0]<=0.9: # Only select contour with defined ratio
-                if y/plate_image.shape[1]>=0.2 and x/plate_image.shape[1]>=0: # Select contour which has the height larger than 35% of the plate
+            if 1<=ratio<=6 and 0.38<=h/plate_image.shape[0]<=0.9: # Only select contour with defined ratio
+                if 0.17<=y/plate_image.shape[1]<=1 and 0<=x/plate_image.shape[1]<=1: # Select contour which has the height larger than 35% of the plate
                     # Draw bounding box around digit number
                     cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 2)
                     # Seperrate number and gibe prediction
@@ -153,7 +155,7 @@ def detection_char(cont,binary,plate_image,lp_type):
                     _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                     crop_characters.append(curr_num)
         if lp_type == 1:
-            if 0<=x/plate_image.shape[1] <=0.28 and 0.1<= y/plate_image.shape[0]<=0.7: 
+            if 0.01<=x/plate_image.shape[1] <=0.28 and 0.01<= y/plate_image.shape[0]<=0.7: 
                 cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,255), 1)
                 x_col.append((x,w))
                 y_col.append((y,h))
@@ -171,19 +173,23 @@ def detection_char(cont,binary,plate_image,lp_type):
     khmer_org_crop = drawKhmer_cont(test_roi,x_col,y_col,lp_type)
     print("Detect {} letters...".format(len(crop_characters)))
     cv2.imwrite("plate_id.png",test_roi)
-    # fig = plt.figure(figsize=(10,6))
-    # plt.imshow(test_roi)
-    # plt.show()
+    if display:
+        fig = plt.figure(figsize=(10,6))
+        plt.imshow(test_roi)
+        plt.show()
     return crop_characters,khmer_org_crop
 
 def recognition_char(crop_characters):
 
     final_string = ''
+    flag = False
     for character in crop_characters:
         # fig.add_subplot(grid[i])
         title = np.array2string(predict_from_model(character,model,labels))
-        # if title.strip("'[]") == "V":
-        #     cv2.imwrite("dataset_characters/W/W_1018.jpg",character)
+        # if title.strip("'[]") == "2":
+        #     if flag is False:
+        #         flag = True
+        #         cv2.imwrite("dataset_characters/3/3_1017.jpg",character)
         final_string+=title.strip("'[]")
 
     return final_string
@@ -216,7 +222,7 @@ def final_result_func(predicted_result,final_result):
 def Receive():
     print("start Receive")
     #    cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
-    cap = cv2.VideoCapture("vid_01.mp4")
+    cap = cv2.VideoCapture("vid_15.mp4")
     ret, frame1 = cap.read()
     ret, frame2 = cap.read()
     
@@ -314,19 +320,23 @@ if __name__ == "__main__":
 
     # FOR VIDEO TESTING>>>>
 
-    q = queue.Queue()
-    p1 = threading.Thread(target=Receive)
-    p2 = threading.Thread(target=Display)
-    p1.start()
-    p2.start()
+    # q = queue.Queue()
+    # p1 = threading.Thread(target=Receive)
+    # p2 = threading.Thread(target=Display)
+    # p1.start()
+    # p2.start()
     
 
     # FOR IMAGE TESTING>>>>>
 
-    # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_33_car.png")
     # cont,binary,plate_image,lp_type = prep_image("frame1.png")
 
-    # # Initialize a list which will be used to append charater images
-    # crop_characters,khmer_org_crop = detection_char(cont,binary,plate_image,lp_type)
-    # result = recognition_char(crop_characters)
-    # print(result)
+    # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_54_car.png")
+
+    cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_moto_11.png")
+
+    
+    # Initialize a list which will be used to append charater images
+    crop_characters,khmer_org_crop = detection_char(cont,binary,plate_image,lp_type,True)
+    result = recognition_char(crop_characters)
+    print(result)
