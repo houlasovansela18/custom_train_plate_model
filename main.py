@@ -87,7 +87,7 @@ def prep_image(image_path):
         plate_image = cv2.convertScaleAbs(LpImg[0], alpha=(255.0))
         cv2.imwrite("original_plate.png",plate_image)
         if lp_type == 1: plate_image = plate_image[15:plate_image.shape[0] - 17, 10:plate_image.shape[1]-15]
-        else:plate_image = plate_image[10:plate_image.shape[0] - 37, 5:plate_image.shape[1]-5]
+        else:plate_image = plate_image[10:plate_image.shape[0] - 37, 3:plate_image.shape[1]-3]
         # convert to grayscale and blur the image
         gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray,(5,5),0)    
@@ -155,13 +155,13 @@ def detection_char(cont,binary,plate_image,lp_type,display = False):
                     _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                     crop_characters.append(curr_num)
         if lp_type == 1:
-            if 0.01<=x/plate_image.shape[1] <=0.28 and 0.01<= y/plate_image.shape[0]<=0.7: 
+            if 0.01<=x/plate_image.shape[1] <=0.31 and 0.01<= y/plate_image.shape[0]<=0.7: 
                 cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,255), 1)
                 x_col.append((x,w))
                 y_col.append((y,h))
             ratio = h/w
             if 1<=ratio<=6:  # Only select contour with defined ratio
-                if h/plate_image.shape[0]>=0.32 and x/plate_image.shape[1]>=0.28: # Select contour which has the height larger than 35% of the plate
+                if h/plate_image.shape[0]>=0.6 and x/plate_image.shape[1]>=0.3: # Select contour which has the height larger than 35% of the plate
                     # Draw bounding box around digit number
                     cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 1)
                     # Seperrate number and gibe prediction
@@ -186,10 +186,10 @@ def recognition_char(crop_characters):
     for character in crop_characters:
         # fig.add_subplot(grid[i])
         title = np.array2string(predict_from_model(character,model,labels))
-        # if title.strip("'[]") == "2":
-        #     if flag is False:
-        #         flag = True
-        #         cv2.imwrite("dataset_characters/3/3_1017.jpg",character)
+        if title.strip("'[]") == "6":
+            if flag is False:
+                flag = True
+                cv2.imwrite("train_video/dataset_characters/Q/Q_2.jpg",character)
         final_string+=title.strip("'[]")
 
     return final_string
@@ -222,7 +222,7 @@ def final_result_func(predicted_result,final_result):
 def Receive():
     print("start Receive")
     #    cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
-    cap = cv2.VideoCapture("vid_15.mp4")
+    cap = cv2.VideoCapture("video/vid_15.mp4")
     ret, frame1 = cap.read()
     ret, frame2 = cap.read()
     
@@ -331,9 +331,9 @@ if __name__ == "__main__":
 
     # cont,binary,plate_image,lp_type = prep_image("frame1.png")
 
-    # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_54_car.png")
+    cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_59_car.png")
 
-    cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_moto_11.png")
+    # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_moto_01.png")
 
     
     # Initialize a list which will be used to append charater images
