@@ -186,10 +186,10 @@ def recognition_char(crop_characters):
     for character in crop_characters:
         # fig.add_subplot(grid[i])
         title = np.array2string(predict_from_model(character,model,labels))
-        if title.strip("'[]") == "6":
-            if flag is False:
-                flag = True
-                cv2.imwrite("train_video/dataset_characters/Q/Q_2.jpg",character)
+        # if title.strip("'[]") == "6":
+        #     if flag is False:
+        #         flag = True
+        #         cv2.imwrite("train_video/dataset_characters/Q/Q_2.jpg",character)
         final_string+=title.strip("'[]")
 
     return final_string
@@ -219,65 +219,65 @@ def final_result_func(predicted_result,final_result):
     return final_result
 
 
-def Receive():
-    print("start Receive")
-    #    cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
-    cap = cv2.VideoCapture("video/vid_15.mp4")
-    ret, frame1 = cap.read()
-    ret, frame2 = cap.read()
-    
-    while(cap.isOpened()):
-        # Difference between frame1(image) and frame2(image)
-        diff = cv2.absdiff(frame1, frame2)
-
-       # Converting color image to gray_scale image
-        gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
-
-       # Converting gray scale image to GaussianBlur, so that change can be find easily 
-        blur = cv2.GaussianBlur(gray, (5, 5), 0)
-
-       # If pixel value is greater than 20, it is assigned white(255) otherwise black
-        _,thresh = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
-        dilated = cv2.dilate(thresh, None, iterations=4)
-
-       # finding contours of moving object
-        contours,_ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-        try:
-            _,boundingBox  = sort_contours(contours)
-            sorted_by_second = sorted(boundingBox, key=lambda tup: tup[3],reverse=True)
-            (x, y, w, h) = sorted_by_second[0]
-            if w >= 150 and h >= 150:
-            # cv2.rectangle(frame1, (x, y), (x + w, y + h), (0, 255,0), 1)
-                vehicle_crop = frame1[y:y+h,x:x+w]
-                q.put(vehicle_crop)
-            else: print("searching..")
-        except:pass
-
-        # Assign frame2(image) to frame1(image)
-        frame1 = frame2
-
-       #Read new frame2
-        ret, frame2 = cap.read()
-        time.sleep(0.2)
-
 # def Receive():
 #     print("start Receive")
-# #     cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
-#     cap = cv2.VideoCapture("vid_14.mp4")
-#     ret, frame = cap.read()
-#     # height, width, channels = frame.shape
-#     # width = int(width//1.1)
-#     # q.put(frame[30:height, 0: width])
-#     q.put(frame)
-# #    while ret:
+#     #    cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
+#     cap = cv2.VideoCapture("video/vid_15.mp4")
+#     ret, frame1 = cap.read()
+#     ret, frame2 = cap.read()
+    
 #     while(cap.isOpened()):
-#         ret, frame = cap.read()
-#         if ret:
-# #             height, width, channels = frame.shape
-#             q.put(frame)
-#             # q.put(frame[30:height, 0: width])
-#             time.sleep(0.2)
+#         # Difference between frame1(image) and frame2(image)
+#         diff = cv2.absdiff(frame1, frame2)
+
+#        # Converting color image to gray_scale image
+#         gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+
+#        # Converting gray scale image to GaussianBlur, so that change can be find easily 
+#         blur = cv2.GaussianBlur(gray, (5, 5), 0)
+
+#        # If pixel value is greater than 20, it is assigned white(255) otherwise black
+#         _,thresh = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
+#         dilated = cv2.dilate(thresh, None, iterations=4)
+
+#        # finding contours of moving object
+#         contours,_ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+#         try:
+#             _,boundingBox  = sort_contours(contours)
+#             sorted_by_second = sorted(boundingBox, key=lambda tup: tup[3],reverse=True)
+#             (x, y, w, h) = sorted_by_second[0]
+#             if w >= 150 and h >= 150:
+#             # cv2.rectangle(frame1, (x, y), (x + w, y + h), (0, 255,0), 1)
+#                 vehicle_crop = frame1[y:y+h,x:x+w]
+#                 q.put(vehicle_crop)
+#             else: print("searching..")
+#         except:pass
+
+#         # Assign frame2(image) to frame1(image)
+#         frame1 = frame2
+
+#        #Read new frame2
+#         ret, frame2 = cap.read()
+#         time.sleep(0.2)
+
+def Receive():
+    print("start Receive")
+#     cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
+    cap = cv2.VideoCapture("video/vid_16.mp4")
+    ret, frame = cap.read()
+    # height, width, channels = frame.shape
+    # width = int(width//1.1)
+    # q.put(frame[30:height, 0: width])
+    q.put(frame)
+#    while ret:
+    while(cap.isOpened()):
+        ret, frame = cap.read()
+        if ret:
+#             height, width, channels = frame.shape
+            q.put(frame)
+            # q.put(frame[30:height, 0: width])
+            time.sleep(0.2)
 
 def Display():
     print("Start Displaying")
@@ -320,23 +320,23 @@ if __name__ == "__main__":
 
     # FOR VIDEO TESTING>>>>
 
-    # q = queue.Queue()
-    # p1 = threading.Thread(target=Receive)
-    # p2 = threading.Thread(target=Display)
-    # p1.start()
-    # p2.start()
+    q = queue.Queue()
+    p1 = threading.Thread(target=Receive)
+    p2 = threading.Thread(target=Display)
+    p1.start()
+    p2.start()
     
 
     # FOR IMAGE TESTING>>>>>
 
     # cont,binary,plate_image,lp_type = prep_image("frame1.png")
 
-    cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_59_car.png")
+    # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_59_car.png")
 
     # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_moto_01.png")
 
     
     # Initialize a list which will be used to append charater images
-    crop_characters,khmer_org_crop = detection_char(cont,binary,plate_image,lp_type,True)
-    result = recognition_char(crop_characters)
-    print(result)
+    # crop_characters,khmer_org_crop = detection_char(cont,binary,plate_image,lp_type,True)
+    # result = recognition_char(crop_characters)
+    # print(result)
