@@ -65,7 +65,7 @@ def get_plate(image_path, Dmax=608, Dmin=440):
     ratio = float(max(vehicle.shape[:2])) / min(vehicle.shape[:2])
     side = int(ratio * Dmin)
     bound_dim = min(side, Dmax)
-    _ , LpImg, lp_type, cor = detect_lp(wpod_net, vehicle, bound_dim, lp_threshold=0.85)
+    _ , LpImg, lp_type, cor = detect_lp(wpod_net, vehicle, bound_dim, lp_threshold=0.9)
     return vehicle, LpImg,lp_type, cor
 
 def sort_contours(cnts,reverse = False):
@@ -107,23 +107,20 @@ def predict_from_model(image,model,labels):
     return prediction
 
 def drawKhmer_cont(test_roi,x_col,y_col,lp_type):
-
-    try :
-        x_min = min(x_col)[0]
-        y_min = min(y_col)[0]
-        x_max = max([ i[0]+i[1]  for i in x_col])
-        y_max = max([ i[0]+i[1]  for i in y_col])
-        
+    try:
         if lp_type == 2:
-            cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max+10), (0, 255,0), 1)
-            khmer_org_crop = test_roi[y_min:y_max+5, x_min:x_max]
+            y_min = min(y_col)
+            cv2.rectangle(test_roi, (50, 0), (test_roi.shape[1]-50, y_min-1), (0, 255,0), 2)
+            khmer_org_crop = test_roi[0:y_min-1, 50:test_roi.shape[1]-50]
         if lp_type == 1: 
-            cv2.rectangle(test_roi, (x_min, y_min), (x_max, y_max), (0, 255,0), 1)
-            khmer_org_crop = test_roi[y_min:y_max, x_min:x_max]
-        
+            x_min = min(x_col)
+            cv2.rectangle(test_roi, (10, 10), (x_min-10,test_roi.shape[0]-20), (0, 255,0), 2)
+            khmer_org_crop = test_roi[10:test_roi.shape[0]-20, 10:x_min-10]
+
+        cv2.imwrite("khmer_crop.png",khmer_org_crop)
+            
         return khmer_org_crop
-        
-    except: pass
+    except:pass
 
 def detection_char(cont,binary,plate_image,lp_type,display = False):
 
@@ -140,36 +137,33 @@ def detection_char(cont,binary,plate_image,lp_type,display = False):
         (x, y, w, h) = cv2.boundingRect(c)
         cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
         if lp_type == 2:
-            if 0.1<=x/plate_image.shape[1]<=0.75 and 0<=y/plate_image.shape[0]<=0.40 and 0<=h/plate_image.shape[0]<=0.4:
-                cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,255), 2)
-                x_col.append((x,w))
-                y_col.append((y,h))
             ratio = h/w
-            if 1<=ratio<=6 and 0.38<=h/plate_image.shape[0]<=0.9: # Only select contour with defined ratio
+            if 1<=ratio<=6 and 0.37<=h/plate_image.shape[0]<=0.9: # Only select contour with defined ratio
                 if 0.17<=y/plate_image.shape[1]<=1 and 0<=x/plate_image.shape[1]<=1: # Select contour which has the height larger than 35% of the plate
                     # Draw bounding box around digit number
                     cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 2)
                     # Seperrate number and gibe prediction
+                    y_col.append(y)
+                    y_col.append(y+h)
                     curr_num = binary[y:y+h,x:x+w]
                     curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
                     _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                     crop_characters.append(curr_num)
+
         if lp_type == 1:
-            if 0.01<=x/plate_image.shape[1] <=0.31 and 0.01<= y/plate_image.shape[0]<=0.7: 
-                cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,255), 1)
-                x_col.append((x,w))
-                y_col.append((y,h))
             ratio = h/w
-            if 1<=ratio<=6:  # Only select contour with defined ratio
-                if h/plate_image.shape[0]>=0.6 and x/plate_image.shape[1]>=0.3: # Select contour which has the height larger than 35% of the plate
+            if 1<=ratio<=6 and plate_image.shape[0]-(y+h)<=15:  # Only select contour with defined ratio
+                if h/plate_image.shape[0]>=0.40 and x/plate_image.shape[1]>=0.32: # Select contour which has the height larger than 35% of the plate
                     # Draw bounding box around digit number
                     cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 1)
                     # Seperrate number and gibe prediction
+                    x_col.append(x)
+                    x_col.append(x+w)
                     curr_num = binary[y:y+h,x:x+w]
                     curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
                     _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                     crop_characters.append(curr_num)
-    
+
     khmer_org_crop = drawKhmer_cont(test_roi,x_col,y_col,lp_type)
     print("Detect {} letters...".format(len(crop_characters)))
     cv2.imwrite("plate_id.png",test_roi)
@@ -219,65 +213,65 @@ def final_result_func(predicted_result,final_result):
     return final_result
 
 
-# def Receive():
-#     print("start Receive")
-#     #    cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
-#     cap = cv2.VideoCapture("video/vid_15.mp4")
-#     ret, frame1 = cap.read()
-#     ret, frame2 = cap.read()
-    
-#     while(cap.isOpened()):
-#         # Difference between frame1(image) and frame2(image)
-#         diff = cv2.absdiff(frame1, frame2)
-
-#        # Converting color image to gray_scale image
-#         gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
-
-#        # Converting gray scale image to GaussianBlur, so that change can be find easily 
-#         blur = cv2.GaussianBlur(gray, (5, 5), 0)
-
-#        # If pixel value is greater than 20, it is assigned white(255) otherwise black
-#         _,thresh = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
-#         dilated = cv2.dilate(thresh, None, iterations=4)
-
-#        # finding contours of moving object
-#         contours,_ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-#         try:
-#             _,boundingBox  = sort_contours(contours)
-#             sorted_by_second = sorted(boundingBox, key=lambda tup: tup[3],reverse=True)
-#             (x, y, w, h) = sorted_by_second[0]
-#             if w >= 150 and h >= 150:
-#             # cv2.rectangle(frame1, (x, y), (x + w, y + h), (0, 255,0), 1)
-#                 vehicle_crop = frame1[y:y+h,x:x+w]
-#                 q.put(vehicle_crop)
-#             else: print("searching..")
-#         except:pass
-
-#         # Assign frame2(image) to frame1(image)
-#         frame1 = frame2
-
-#        #Read new frame2
-#         ret, frame2 = cap.read()
-#         time.sleep(0.2)
-
 def Receive():
     print("start Receive")
-#     cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
-    cap = cv2.VideoCapture("video/vid_16.mp4")
-    ret, frame = cap.read()
-    # height, width, channels = frame.shape
-    # width = int(width//1.1)
-    # q.put(frame[30:height, 0: width])
-    q.put(frame)
-#    while ret:
+    #    cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
+    cap = cv2.VideoCapture("video/vid_15.mp4")
+    ret, frame1 = cap.read()
+    ret, frame2 = cap.read()
+    
     while(cap.isOpened()):
-        ret, frame = cap.read()
-        if ret:
-#             height, width, channels = frame.shape
-            q.put(frame)
-            # q.put(frame[30:height, 0: width])
-            time.sleep(0.2)
+        # Difference between frame1(image) and frame2(image)
+        diff = cv2.absdiff(frame1, frame2)
+
+       # Converting color image to gray_scale image
+        gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+
+       # Converting gray scale image to GaussianBlur, so that change can be find easily 
+        blur = cv2.GaussianBlur(gray, (5, 5), 0)
+
+       # If pixel value is greater than 20, it is assigned white(255) otherwise black
+        _,thresh = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
+        dilated = cv2.dilate(thresh, None, iterations=4)
+
+       # finding contours of moving object
+        contours,_ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        try:
+            _,boundingBox  = sort_contours(contours)
+            sorted_by_second = sorted(boundingBox, key=lambda tup: tup[3],reverse=True)
+            (x, y, w, h) = sorted_by_second[0]
+            if w >= 150 and h >= 150:
+            # cv2.rectangle(frame1, (x, y), (x + w, y + h), (0, 255,0), 1)
+                vehicle_crop = frame1[y:y+h,x:x+w]
+                q.put(vehicle_crop)
+            else: print("searching..")
+        except:pass
+
+        # Assign frame2(image) to frame1(image)
+        frame1 = frame2
+
+       #Read new frame2
+        ret, frame2 = cap.read()
+        time.sleep(0.2)
+
+# def Receive():
+#     print("start Receive")
+# #     cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
+#     cap = cv2.VideoCapture("video/vid_16.mp4")
+#     ret, frame = cap.read()
+#     # height, width, channels = frame.shape
+#     # width = int(width//1.1)
+#     # q.put(frame[30:height, 0: width])
+#     q.put(frame)
+# #    while ret:
+#     while(cap.isOpened()):
+#         ret, frame = cap.read()
+#         if ret:
+# #             height, width, channels = frame.shape
+#             q.put(frame)
+#             # q.put(frame[30:height, 0: width])
+#             time.sleep(0.2)
 
 def Display():
     print("Start Displaying")
@@ -331,7 +325,7 @@ if __name__ == "__main__":
 
     # cont,binary,plate_image,lp_type = prep_image("frame1.png")
 
-    # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_59_car.png")
+    # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_02_car.png")
 
     # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_moto_01.png")
 
