@@ -75,6 +75,15 @@ def sort_contours(cnts,reverse = False):
                                         key=lambda b: b[1][i], reverse=reverse))
     return cnts,boundingBoxes
 
+def getBinaryImage(image_array):
+
+    gray = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray,(5,5),0)    
+    # Applied inversed thresh_binary 
+    binary = cv2.threshold(blur, 0, 255,cv2.THRESH_BINARY_INV +  cv2.THRESH_OTSU)[1]
+
+    return binary
+
 def prep_image(image_path):
 
     # Obtain plate image and its coordinates from an image
@@ -89,10 +98,7 @@ def prep_image(image_path):
         if lp_type == 1: plate_image = plate_image[15:plate_image.shape[0] - 17, 10:plate_image.shape[1]-15]
         else:plate_image = plate_image[10:plate_image.shape[0] - 37, 3:plate_image.shape[1]-3]
         # convert to grayscale and blur the image
-        gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
-        blur = cv2.GaussianBlur(gray,(5,5),0)    
-        # Applied inversed thresh_binary 
-        binary = cv2.threshold(blur, 0, 255,cv2.THRESH_BINARY_INV +  cv2.THRESH_OTSU)[1]
+        binary = getBinaryImage(plate_image)
         cv2.imwrite("binary_plate.png",binary)
         # check to find contour more better for sementation.
 
@@ -117,6 +123,7 @@ def drawKhmer_cont(test_roi,x_col,y_col,lp_type):
             cv2.rectangle(test_roi, (10, 10), (x_min-10,test_roi.shape[0]-20), (0, 255,0), 2)
             khmer_org_crop = test_roi[10:test_roi.shape[0]-20, 10:x_min-10]
 
+        khmer_org_crop = getBinaryImage(khmer_org_crop)
         cv2.imwrite("khmer_crop.png",khmer_org_crop)
             
         return khmer_org_crop
@@ -135,7 +142,7 @@ def detection_char(cont,binary,plate_image,lp_type,display = False):
     crop_characters = []
     for c in cont:
         (x, y, w, h) = cv2.boundingRect(c)
-        cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
+        # cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 0,0), 1)
         if lp_type == 2:
             ratio = h/w
             if 1<=ratio<=6 and 0.37<=h/plate_image.shape[0]<=0.9: # Only select contour with defined ratio
@@ -212,32 +219,32 @@ def final_result_func(predicted_result,final_result):
 
     return final_result
 
-
 def Receive():
     print("start Receive")
     #    cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
-    cap = cv2.VideoCapture("video/vid_15.mp4")
+    cap = cv2.VideoCapture("video/vid_02.mp4")
     ret, frame1 = cap.read()
     ret, frame2 = cap.read()
     
     while(cap.isOpened()):
-        # Difference between frame1(image) and frame2(image)
-        diff = cv2.absdiff(frame1, frame2)
-
-       # Converting color image to gray_scale image
-        gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
-
-       # Converting gray scale image to GaussianBlur, so that change can be find easily 
-        blur = cv2.GaussianBlur(gray, (5, 5), 0)
-
-       # If pixel value is greater than 20, it is assigned white(255) otherwise black
-        _,thresh = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
-        dilated = cv2.dilate(thresh, None, iterations=4)
-
-       # finding contours of moving object
-        contours,_ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
         try:
+            # Difference between frame1(image) and frame2(image)
+            diff = cv2.absdiff(frame1, frame2)
+
+        # Converting color image to gray_scale image
+            gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
+
+        # Converting gray scale image to GaussianBlur, so that change can be find easily 
+            blur = cv2.GaussianBlur(gray, (5, 5), 0)
+
+        # If pixel value is greater than 20, it is assigned white(255) otherwise black
+            _,thresh = cv2.threshold(blur, 20, 255, cv2.THRESH_BINARY)
+            dilated = cv2.dilate(thresh, None, iterations=4)
+
+        # finding contours of moving object
+            contours,_ = cv2.findContours(dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+            
             _,boundingBox  = sort_contours(contours)
             sorted_by_second = sorted(boundingBox, key=lambda tup: tup[3],reverse=True)
             (x, y, w, h) = sorted_by_second[0]
@@ -256,22 +263,22 @@ def Receive():
         time.sleep(0.2)
 
 # def Receive():
-#     print("start Receive")
-# #     cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
-#     cap = cv2.VideoCapture("video/vid_16.mp4")
-#     ret, frame = cap.read()
-#     # height, width, channels = frame.shape
-#     # width = int(width//1.1)
-#     # q.put(frame[30:height, 0: width])
-#     q.put(frame)
-# #    while ret:
-#     while(cap.isOpened()):
-#         ret, frame = cap.read()
-#         if ret:
-# #             height, width, channels = frame.shape
-#             q.put(frame)
-#             # q.put(frame[30:height, 0: width])
-#             time.sleep(0.2)
+    print("start Receive")
+    #       cap = cv2.VideoCapture("rtsp://admin:admin@10.2.7.251:554/1")
+    cap = cv2.VideoCapture("video/vid_16.mp4")
+    ret, frame = cap.read()
+    # height, width, channels = frame.shape
+    # width = int(width//1.1)
+    # q.put(frame[30:height, 0: width])
+    q.put(frame)
+    #    while ret:
+    while(cap.isOpened()):
+        ret, frame = cap.read()
+        if ret:
+    #             height, width, channels = frame.shape
+            q.put(frame)
+            # q.put(frame[30:height, 0: width])
+            time.sleep(0.2)
 
 def Display():
     print("Start Displaying")
@@ -314,16 +321,16 @@ if __name__ == "__main__":
 
     # FOR VIDEO TESTING>>>>
 
-    q = queue.Queue()
-    p1 = threading.Thread(target=Receive)
-    p2 = threading.Thread(target=Display)
-    p1.start()
-    p2.start()
+    # q = queue.Queue()
+    # p1 = threading.Thread(target=Receive)
+    # p2 = threading.Thread(target=Display)
+    # p1.start()
+    # p2.start()
     
 
     # FOR IMAGE TESTING>>>>>
 
-    # cont,binary,plate_image,lp_type = prep_image("frame1.png")
+    cont,binary,plate_image,lp_type = prep_image("frame1.png")
 
     # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_02_car.png")
 
@@ -331,6 +338,6 @@ if __name__ == "__main__":
 
     
     # Initialize a list which will be used to append charater images
-    # crop_characters,khmer_org_crop = detection_char(cont,binary,plate_image,lp_type,True)
-    # result = recognition_char(crop_characters)
-    # print(result)
+    crop_characters,khmer_org_crop = detection_char(cont,binary,plate_image,lp_type,True)
+    result = recognition_char(crop_characters)
+    print(result)

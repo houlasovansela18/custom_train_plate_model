@@ -186,10 +186,10 @@ def recognition_char(crop_characters):
     for character in crop_characters:
         # fig.add_subplot(grid[i])
         title = np.array2string(predict_from_model(character,model,labels))
-        if title.strip("'[]") == "6":
-            if flag is False:
-                flag = True
-                cv2.imwrite("train_video/dataset_characters/Q/Q_2.jpg",character)
+        # if title.strip("'[]") == "6":
+        #     if flag is False:
+        #         flag = True
+        #         cv2.imwrite("train_video/dataset_characters/Q/Q_2.jpg",character)
         final_string+=title.strip("'[]")
 
     return final_string

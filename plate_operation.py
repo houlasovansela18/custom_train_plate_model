@@ -43,4 +43,5 @@ class Operation:
                     if self.plate_id[i].isdigit():pass
                     else:
                         self.plate_id = self.plate_id.replace(self.plate_id[i],self.char_to_digid[self.plate_id[i]],1)
+                        
         return self.plate_id
