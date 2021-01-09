@@ -321,16 +321,16 @@ if __name__ == "__main__":
 
     # FOR VIDEO TESTING>>>>
 
-    # q = queue.Queue()
-    # p1 = threading.Thread(target=Receive)
-    # p2 = threading.Thread(target=Display)
-    # p1.start()
-    # p2.start()
+    q = queue.Queue()
+    p1 = threading.Thread(target=Receive)
+    p2 = threading.Thread(target=Display)
+    p1.start()
+    p2.start()
     
 
     # FOR IMAGE TESTING>>>>>
 
-    cont,binary,plate_image,lp_type = prep_image("frame1.png")
+    # cont,binary,plate_image,lp_type = prep_image("frame1.png")
 
     # cont,binary,plate_image,lp_type = prep_image("Plate_examples/khmer_02_car.png")
 
@@ -338,6 +338,6 @@ if __name__ == "__main__":
 
     
     # Initialize a list which will be used to append charater images
-    crop_characters,khmer_org_crop = detection_char(cont,binary,plate_image,lp_type,True)
-    result = recognition_char(crop_characters)
-    print(result)
+    # crop_characters,khmer_org_crop = detection_char(cont,binary,plate_image,lp_type,True)
+    # result = recognition_char(crop_characters)
+    # print(result)
